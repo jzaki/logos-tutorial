@@ -5,6 +5,7 @@ This tutorial walks you through wrapping a C shared library (`.so` on Linux, `.d
 **What you'll build:** A `calc_module` that wraps a tiny C calculator library (`libcalc`), exposing arithmetic functions to the Logos platform.
 
 **What you'll learn:**
+
 - How a Logos module wraps a C library
 - The role of each file in the module project
 - How to build, inspect, and test your module
@@ -13,14 +14,11 @@ This tutorial walks you through wrapping a C shared library (`.so` on Linux, `.d
 ## Prerequisites
 
 - **Nix** with flakes enabled. Install from [nixos.org](https://nixos.org/download.html), then enable flakes globally:
-
   ```bash
   # Add to ~/.config/nix/nix.conf:
   experimental-features = nix-command flakes
   ```
-
 - **A C compiler** (gcc or clang) for building the C library. Only needed if you're building the `.so`/`.dylib` yourself rather than using a pre-built library.
-
 - Basic familiarity with C and C++.
 
 ---
@@ -224,12 +222,14 @@ cmake:
 
 **Key fields explained:**
 
-| Field | What it does |
-|-------|-------------|
-| `name` | Module name — must be a valid C identifier (used in filenames, method calls) |
-| `external_libraries[].name` | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
-| `external_libraries[].vendor_path` | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root |
-| `cmake.extra_include_dirs` | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"` |
+
+| Field                              | What it does                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                             | Module name — must be a valid C identifier (used in filenames, method calls)                                                                                                                                                                                                                                        |
+| `external_libraries[].name`        | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
+| `external_libraries[].vendor_path` | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root                                                                                                                                                                                                                        |
+| `cmake.extra_include_dirs`         | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"`                                                                                                                                                                                                                                     |
+
 
 ### 2.2 `metadata.json` — Runtime Metadata
 
@@ -329,6 +329,7 @@ Q_DECLARE_INTERFACE(CalcModuleInterface, CalcModuleInterface_iid)
 ```
 
 **Rules for the interface:**
+
 - Every method you want callable by other modules must be `Q_INVOKABLE` and `virtual`
 - Supported parameter/return types: `int`, `bool`, `QString`, `QByteArray`, `QVariant`, `QJsonArray`, `QStringList`, `LogosResult`
 - The interface ID string (e.g., `"org.logos.CalcModuleInterface"`) must be unique across all modules
@@ -384,12 +385,13 @@ signals:
 ```
 
 **Critical details:**
+
 - `Q_PLUGIN_METADATA(IID ... FILE "metadata.json")` — embeds the metadata into the binary
 - `Q_INTERFACES(CalcModuleInterface PluginInterface)` — registers both interfaces with Qt's plugin system
 - `initLogos` must be `Q_INVOKABLE` but **not** `override` — the base class `PluginInterface` does not declare it as virtual; the Logos host calls it reflectively via `QMetaObject::invokeMethod`
 - `eventResponse` signal is required for event forwarding between modules
 - `name()` must return the same string as the `name` field in `module.yaml` and `metadata.json`
-- **No `m_logosAPI` member variable** — the `LogosAPI*` pointer is stored in the global `logosAPI` variable defined in `liblogos`, not in a class member. See the `initLogos` implementation below.
+- **No `m_logosAPI` member variable** — the `LogosAPI`* pointer is stored in the global `logosAPI` variable defined in `liblogos`, not in a class member. See the `initLogos` implementation below.
 
 ### 2.7 `src/calc_module_plugin.cpp` — Plugin Implementation
 
@@ -459,8 +461,9 @@ QString CalcModulePlugin::libVersion()
 ```
 
 **The wrapping pattern** is always the same:
+
 1. Call the C function with the arguments
-2. Convert the C result to a Qt type if needed (e.g., `const char*` → `QString`)
+2. Convert the C result to a Qt type if needed (e.g., `const char`* → `QString`)
 3. Return the Qt type
 
 ---
@@ -713,7 +716,7 @@ export DYLD_LIBRARY_PATH=result/lib/
 1. `logoscore` scans `./modules/` for subdirectories containing `manifest.json`
 2. It finds `calc_module` and extracts metadata from the plugin binary
 3. It spawns a `logos_host` process that loads `calc_module_plugin.so`
-4. `logos_host` calls `initLogos()` on the plugin, providing a `LogosAPI*` for inter-module communication
+4. `logos_host` calls `initLogos()` on the plugin, providing a `LogosAPI`* for inter-module communication
 5. The `-c` command is parsed: module name `calc_module`, method `add`, args `[3, 5]`
 6. `logoscore` sends the call to `logos_host` via Qt Remote Objects (IPC)
 7. `logos_host` invokes `CalcModulePlugin::add(3, 5)` which calls `calc_add(3, 5)` from libcalc
@@ -746,12 +749,17 @@ nix build 'github:logos-co/logos-package#lgx' --out-link ./lgx
 
 ```bash
 # Create an empty LGX package
-./lgx/bin/lgx create calc_module.lgx --name calc_module
+./lgx/bin/lgx create calc_module --name calc_module
 
 # Add the Linux variant
-./lgx/bin/lgx add-variant calc_module.lgx \
+./lgx/bin/lgx add calc_module.lgx \
   --variant linux-aarch64 \
-  --files result/lib/
+  --files result/lib/ --main calc_module_plugin.so
+
+# Or on Mac, to add the Mac variant
+./lgx/bin/lgx add calc_module.lgx \
+  --variant darwin-arm64 \
+  --files result/lib/ --main calc_module_plugin.dylib
 
 # Verify the package
 ./lgx/bin/lgx verify calc_module.lgx
@@ -852,13 +860,15 @@ Q_INVOKABLE QString getData() {
 
 ### String conversion reference
 
-| C type | Qt type | C → Qt | Qt → C |
-|--------|---------|--------|--------|
-| `const char*` | `QString` | `QString::fromUtf8(c_str)` | `str.toUtf8().constData()` |
-| `const char*` (binary) | `QByteArray` | `QByteArray(data, len)` | `ba.data()`, `ba.size()` |
-| `int` | `int` | direct | direct |
-| `bool` / `int` | `bool` | `result != 0` | direct |
-| `void*` | (store in member) | — | — |
+
+| C type                 | Qt type           | C → Qt                     | Qt → C                     |
+| ---------------------- | ----------------- | -------------------------- | -------------------------- |
+| `const char*`          | `QString`         | `QString::fromUtf8(c_str)` | `str.toUtf8().constData()` |
+| `const char*` (binary) | `QByteArray`      | `QByteArray(data, len)`    | `ba.data()`, `ba.size()`   |
+| `int`                  | `int`             | direct                     | direct                     |
+| `bool` / `int`         | `bool`            | `result != 0`              | direct                     |
+| `void*`                | (store in member) | —                          | —                          |
+
 
 ---
 
@@ -916,6 +926,7 @@ cmake:
 ```
 
 **Key difference:** The `externalLibInputs` key in flake.nix (`foo`) must match the `name` field in `external_libraries` (`foo`). The builder will:
+
 1. Clone the source from the flake input
 2. Run `build_command` (`make shared`)
 3. Search for output files matching `output_pattern`
@@ -942,10 +953,10 @@ Setting `go_build: true` enables the Go toolchain and sets `CGO_ENABLED=1`.
 
 The [logos-libp2p-module](https://github.com/logos-co/logos-libp2p-module) is a production module that wraps the `nim-libp2p` library (compiled to a C shared library). Key files:
 
-- **`flake.nix`** — Uses `externalLibInputs` to fetch the nim-libp2p C bindings from a GitHub flake
-- **`module.yaml`** — Declares `nim_libp2p` as an external library with `go_build: false`
-- **`src/plugin.cpp`** — Wraps ~40 C functions (`libp2p_new`, `libp2p_start`, `libp2p_connect`, `libp2p_dial`, `libp2p_gossipsub_subscribe`, etc.) as `Q_INVOKABLE` methods
-- **`tests/`** — Qt test suite that exercises every wrapped function
+- `**flake.nix**` — Uses `externalLibInputs` to fetch the nim-libp2p C bindings from a GitHub flake
+- `**module.yaml**` — Declares `nim_libp2p` as an external library with `go_build: false`
+- `**src/plugin.cpp**` — Wraps ~40 C functions (`libp2p_new`, `libp2p_start`, `libp2p_connect`, `libp2p_dial`, `libp2p_gossipsub_subscribe`, etc.) as `Q_INVOKABLE` methods
+- `**tests/**` — Qt test suite that exercises every wrapped function
 
 It follows the exact same pattern as this tutorial, just at a larger scale.
 
@@ -1000,6 +1011,7 @@ void MyPlugin::initLogos(LogosAPI* api)
 ### Plugin not discovered by logoscore
 
 **Check:**
+
 1. The module is in a **subdirectory** of the modules dir (e.g., `modules/calc_module/`)
 2. The subdirectory contains a `manifest.json` with a valid `main` object
 3. The platform key in `main` matches your OS/arch (e.g., `linux-aarch64`, `darwin-arm64`)
@@ -1023,6 +1035,8 @@ The first `nix build` downloads Qt 6, the Logos C++ SDK, the code generator, and
 ### Symbol not found errors
 
 If you get "undefined symbol" errors for your C library functions:
+
 1. Verify the `.so`/`.dylib` is in `lib/` before building
 2. Verify the header has `extern "C"` guards
 3. Check the symbols are exported: `nm -D lib/libcalc.so | grep calc`
+
