@@ -25,18 +25,32 @@ This tutorial walks you through wrapping a C shared library (`.so` on Linux, `.d
 
 ---
 
-## Step 1: Create the C Library
+## Step 1: Scaffold the Module Project
 
-We'll create a minimal C library called `libcalc` with four arithmetic functions. In a real project, this would be whatever C library you want to wrap (e.g., a networking library, a crypto library, a codec).
+Before writing any C code, scaffold the Logos module project using the official template. This gives you the correct `flake.nix`, `module.yaml`, directory structure, and build configuration out of the box.
 
-### 1.1 Create the project directory
+### 1.1 Create the project using the module builder template
 
 ```bash
+# For a module that wraps an external C library:
 mkdir logos-calc-module && cd logos-calc-module
-mkdir lib src
+nix flake init -t github:logos-co/logos-module-builder#with-external-lib
+
+# Or for a plain module (no external library):
+# nix flake init -t github:logos-co/logos-module-builder
 ```
 
-### 1.2 Write the C header
+This generates the skeleton files (`flake.nix`, `module.yaml`, `CMakeLists.txt`, etc.) pre-configured for the logos-module-builder. You then customize them for your specific library.
+
+> **Alternative approach:** You can also create the C library as a separate project, build it there, then copy the resulting `.so`/`.dylib` and header files into the module's `lib/` directory. This can be cleaner for larger libraries with their own build systems.
+
+### 1.2 Create the lib and src directories
+
+```bash
+mkdir -p lib src
+```
+
+### 1.3 Write the C header
 
 Create `lib/libcalc.h`:
 
@@ -72,7 +86,7 @@ const char* calc_version(void);
 
 The `extern "C"` block is essential — it prevents C++ name mangling so the Logos module can find the symbols.
 
-### 1.3 Write the C implementation
+### 1.4 Write the C implementation
 
 Create `lib/libcalc.c`:
 
@@ -120,7 +134,7 @@ const char* calc_version(void)
 }
 ```
 
-### 1.4 Build the shared library
+### 1.5 Build the shared library
 
 ```bash
 cd lib
@@ -158,9 +172,9 @@ T calc_version
 
 ---
 
-## Step 2: Create the Logos Module
+## Step 2: Configure the Logos Module
 
-A Logos module is a **Qt plugin** that wraps your C library functions as `Q_INVOKABLE` methods. You need five files:
+If you used the template in Step 1.1, you already have the skeleton files. Now customize them for your library. A Logos module is a **Qt plugin** that wraps your C library functions as `Q_INVOKABLE` methods. You need five files:
 
 ```
 logos-calc-module/
@@ -213,7 +227,7 @@ cmake:
 | Field | What it does |
 |-------|-------------|
 | `name` | Module name — must be a valid C identifier (used in filenames, method calls) |
-| `external_libraries[].name` | Library name — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path` |
+| `external_libraries[].name` | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
 | `external_libraries[].vendor_path` | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root |
 | `cmake.extra_include_dirs` | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"` |
 
@@ -364,8 +378,6 @@ public:
 signals:
     void eventResponse(const QString& eventName, const QVariantList& args);
 
-private:
-    LogosAPI* m_logosAPI = nullptr;
 };
 
 #endif // CALC_MODULE_PLUGIN_H
@@ -377,6 +389,7 @@ private:
 - `initLogos` must be `Q_INVOKABLE` but **not** `override` — the base class `PluginInterface` does not declare it as virtual; the Logos host calls it reflectively via `QMetaObject::invokeMethod`
 - `eventResponse` signal is required for event forwarding between modules
 - `name()` must return the same string as the `name` field in `module.yaml` and `metadata.json`
+- **No `m_logosAPI` member variable** — the `LogosAPI*` pointer is stored in the global `logosAPI` variable defined in `liblogos`, not in a class member. See the `initLogos` implementation below.
 
 ### 2.7 `src/calc_module_plugin.cpp` — Plugin Implementation
 
@@ -400,7 +413,10 @@ CalcModulePlugin::~CalcModulePlugin()
 
 void CalcModulePlugin::initLogos(LogosAPI* api)
 {
-    m_logosAPI = api;
+    // IMPORTANT: Use the global `logosAPI` variable from liblogos, NOT a class member.
+    // `logosAPI` is defined in the Logos SDK headers and is used by the API
+    // internally. Storing the pointer in a local `m_logosAPI` member will NOT work.
+    logosAPI = api;
     qDebug() << "CalcModulePlugin: LogosAPI initialized";
 }
 
@@ -466,11 +482,13 @@ git commit -m "Initial commit"
 
 ```bash
 # Build just the plugin library (.so / .dylib)
-nix build .#lib
+nix build '.#lib'
 
 # Build everything (library + generated SDK headers)
 nix build
 ```
+
+> **Quoting matters:** Use `'.#lib'` (with quotes) rather than bare `nix build .#lib`. Some shells (especially zsh) may interpret the `#` as a comment character, causing the command to silently build the wrong thing or fail.
 
 The first build takes a while (5-15 minutes) as Nix downloads Qt, the Logos SDK, and other dependencies. Subsequent builds are fast due to caching.
 
@@ -480,11 +498,16 @@ The first build takes a while (5-15 minutes) as Nix downloads Qt, the Logos SDK,
 ls -la result/lib/
 ```
 
-You should see two files:
+You should see two files (extensions depend on your platform):
 
 ```
+# Linux
 calc_module_plugin.so   # Your Logos module plugin
 libcalc.so              # The C library (copied alongside)
+
+# macOS
+calc_module_plugin.dylib
+libcalc.dylib
 ```
 
 Both files are placed together so the plugin can find the C library at runtime via RPATH.
@@ -504,7 +527,11 @@ nix build 'github:logos-co/logos-module#lm' --out-link ./lm
 ### 4.2 View metadata
 
 ```bash
+# Linux
 ./lm/bin/lm metadata result/lib/calc_module_plugin.so
+
+# macOS
+./lm/bin/lm metadata result/lib/calc_module_plugin.dylib
 ```
 
 Output:
@@ -523,7 +550,11 @@ Dependencies: (none)
 ### 4.3 List methods
 
 ```bash
+# Linux
 ./lm/bin/lm methods result/lib/calc_module_plugin.so
+
+# macOS
+./lm/bin/lm methods result/lib/calc_module_plugin.dylib
 ```
 
 Output:
@@ -568,7 +599,11 @@ All five wrapping methods are visible and invokable. The `initLogos` method is a
 For scripting and CI, use `--json`:
 
 ```bash
+# Linux
 ./lm/bin/lm methods result/lib/calc_module_plugin.so --json
+
+# macOS
+./lm/bin/lm methods result/lib/calc_module_plugin.dylib --json
 ```
 
 ```json
@@ -603,8 +638,14 @@ nix build 'github:logos-co/logos-liblogos' --out-link ./logos
 
 ```bash
 mkdir -p modules/calc_module
+
+# Linux
 cp result/lib/calc_module_plugin.so modules/calc_module/
 cp result/lib/libcalc.so modules/calc_module/
+
+# macOS
+# cp result/lib/calc_module_plugin.dylib modules/calc_module/
+# cp result/lib/libcalc.dylib modules/calc_module/
 ```
 
 Create `modules/calc_module/manifest.json`:
@@ -627,7 +668,19 @@ Create `modules/calc_module/manifest.json`:
 
 The `main` object maps platform variant names to the plugin filename. `logoscore` uses this to find the right binary for your OS and architecture.
 
-### 5.3 Call methods
+### 5.3 Set library path (macOS workaround)
+
+On macOS, RPATH may not be correctly set in the built plugin (this is a known logos-module-builder issue). If `logoscore` fails to load the module with a "library not found" error, set the library path manually:
+
+```bash
+# macOS only — needed until RPATH is fixed in logos-module-builder
+export DYLD_LIBRARY_PATH=result/lib/
+
+# Linux equivalent (usually not needed if RPATH is set correctly)
+# export LD_LIBRARY_PATH=result/lib/
+```
+
+### 5.4 Call methods
 
 ```bash
 # Call add(3, 5)
@@ -918,7 +971,31 @@ Q_INVOKABLE void initLogos(LogosAPI* api);  // No override!
 Cannot load library calc_module_plugin.so: libcalc.so: cannot open shared object file
 ```
 
-**Fix:** Ensure `libcalc.so` is in the same directory as `calc_module_plugin.so`. The build system sets RPATH to `$ORIGIN` (Linux) / `@loader_path` (macOS) so the plugin looks for libraries in its own directory.
+**Fix:** Ensure `libcalc.so` / `libcalc.dylib` is in the same directory as the plugin. The build system should set RPATH to `$ORIGIN` (Linux) / `@loader_path` (macOS) so the plugin looks for libraries in its own directory.
+
+**macOS note:** As of writing, the RPATH may not be correctly set by logos-module-builder on macOS. As a workaround, set the library path before running:
+
+```bash
+export DYLD_LIBRARY_PATH=result/lib/
+```
+
+### `initLogos` stores API pointer in wrong variable
+
+If inter-module calls or API features silently fail, check that `initLogos` assigns to the **global** `logosAPI` variable (defined in the Logos SDK / liblogos), not to a class member like `m_logosAPI`:
+
+```cpp
+// CORRECT — uses the global variable from liblogos
+void MyPlugin::initLogos(LogosAPI* api)
+{
+    logosAPI = api;
+}
+
+// WRONG — stores in a local member, API calls won't work
+void MyPlugin::initLogos(LogosAPI* api)
+{
+    m_logosAPI = api;
+}
+```
 
 ### Plugin not discovered by logoscore
 
@@ -926,6 +1003,18 @@ Cannot load library calc_module_plugin.so: libcalc.so: cannot open shared object
 1. The module is in a **subdirectory** of the modules dir (e.g., `modules/calc_module/`)
 2. The subdirectory contains a `manifest.json` with a valid `main` object
 3. The platform key in `main` matches your OS/arch (e.g., `linux-aarch64`, `darwin-arm64`)
+
+### `nix build .#lib` does nothing or fails silently
+
+Some shells (notably zsh) treat `#` as a comment character. Always quote the flake reference:
+
+```bash
+# Correct
+nix build '.#lib'
+
+# May fail in zsh
+nix build .#lib
+```
 
 ### First build is slow
 
