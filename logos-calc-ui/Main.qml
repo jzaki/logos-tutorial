@@ -250,7 +250,7 @@ Item {
         root.result = ""
 
         if (typeof logos === "undefined" || !logos.callModule) {
-            root.errorText = "Logos bridge not available (run inside logos-app)"
+            root.errorText = "Logos bridge not available (run inside logos-basecamp)"
             return
         }
 
