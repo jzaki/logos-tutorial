@@ -25,9 +25,9 @@ A comprehensive guide to creating, building, testing, packaging, and distributin
   - [4.1 The lgpm CLI](#41-the-lgpm-cli)
   - [4.2 Installing from Local Files](#42-installing-from-local-files)
   - [4.3 Installing from a Registry](#43-installing-from-a-registry)
-- [Part 5: Running in the Logos App](#part-5-running-in-the-logos-app)
-  - [5.1 Building logos-app](#51-building-logos-app)
-  - [5.2 Module Types in logos-app](#52-module-types-in-logos-app)
+- [Part 5: Running in logos-basecamp](#part-5-running-in-logos-basecamp)
+  - [5.1 Building logos-basecamp](#51-building-logos-basecamp)
+  - [5.2 Module Types in logos-basecamp](#52-module-types-in-logos-basecamp)
   - [5.3 Development Mode](#53-development-mode)
 - [Part 6: Inter-Module Communication](#part-6-inter-module-communication)
   - [6.1 The LogosAPI](#61-the-logosapi)
@@ -52,7 +52,7 @@ The **Logos platform** is a modular application framework built in C++ on top of
 - **Process isolation** -- each module runs in its own host process (on desktop), communicating via Qt Remote Objects
 - **Cross-platform support** -- macOS (arm64, x86_64) and Linux (arm64, x86_64)
 - **A package format** (`.lgx`) for distributing modules with platform-specific variants
-- **A desktop application shell** (`logos-app`) with a sidebar, tabbed workspace, and plugin management UI
+- **A desktop application shell** (`logos-basecamp`) with a sidebar, tabbed workspace, and plugin management UI
 - **A CLI runtime** (`logoscore`) for running modules headlessly
 
 ## Architecture
@@ -60,7 +60,7 @@ The **Logos platform** is a modular application framework built in C++ on top of
 ```
 +---------------------------------------------------------------+
 |                     Application Layer                          |
-|   logos-app (Desktop GUI)  or  logoscore (CLI Runtime)        |
+|   logos-basecamp (Desktop GUI)  or  logoscore (CLI Runtime)        |
 +---------------------------------------------------------------+
         |                    |                    |
         v                    v                    v
@@ -94,7 +94,7 @@ The **Logos platform** is a modular application framework built in C++ on top of
 | **logos-liblogos** | [logos-co/logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core runtime (`logoscore`, `logos_host`, `liblogos_core`) |
 | **logos-package** | [logos-co/logos-package](https://github.com/logos-co/logos-package) | LGX package format library + `lgx` CLI |
 | **logos-package-manager-module** | [logos-co/logos-package-manager-module](https://github.com/logos-co/logos-package-manager-module) | Package manager module + `lgpm` CLI |
-| **logos-app** | [logos-co/logos-co/logos-app](https://github.com/logos-co/logos-app) | Desktop application shell |
+| **logos-basecamp** | [logos-co/logos-basecamp](https://github.com/logos-co/logos-basecamp) | Desktop application shell |
 
 ## Prerequisites
 
@@ -663,24 +663,24 @@ The package manager automatically:
 
 ---
 
-## Part 5: Running in the Logos App
+## Part 5: Running in logos-basecamp
 
-### 5.1 Building logos-app
+### 5.1 Building logos-basecamp
 
 ```bash
 # Build the full application
-nix build 'github:logos-co/logos-app#app' --out-link ./logos-app
+nix build 'github:logos-co/logos-basecamp#app' --out-link ./logos-basecamp
 
 # Run it
-./logos-app/bin/logos-app
+./logos-basecamp/bin/logos-basecamp
 
 # Or build platform-specific distributions:
-nix build 'github:logos-co/logos-app#bin-appimage'     # Linux AppImage
-nix build 'github:logos-co/logos-app#bin-macos-app'     # macOS .app bundle
-nix build 'github:logos-co/logos-app#bin-macos-dmg'     # macOS DMG
+nix build 'github:logos-co/logos-basecamp#bin-appimage'     # Linux AppImage
+nix build 'github:logos-co/logos-basecamp#bin-macos-app'     # macOS .app bundle
+nix build 'github:logos-co/logos-basecamp#bin-macos-dmg'     # macOS DMG
 ```
 
-### 5.2 Module Types in logos-app
+### 5.2 Module Types in logos-basecamp
 
 The application supports three types of modules:
 
@@ -725,7 +725,7 @@ For rapid iteration on QML UI modules, use the development mode launcher:
 
 ```bash
 # Build once
-nix build 'github:logos-co/logos-app'
+nix build 'github:logos-co/logos-basecamp'
 
 # Run with live QML reloading (edits to .qml files take effect immediately)
 ./run-dev.sh
@@ -992,7 +992,7 @@ Or in `metadata.json`:
 }
 ```
 
-When your module is installed via `lgpm`, its dependencies are automatically resolved and installed first. When loaded via `logos-app`, core module dependencies are loaded before your module.
+When your module is installed via `lgpm`, its dependencies are automatically resolved and installed first. When loaded via `logos-basecamp`, core module dependencies are loaded before your module.
 
 ---
 
@@ -1006,7 +1006,7 @@ When your module is installed via `lgpm`, its dependencies are automatically res
 | [logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core runtime | `logoscore` (CLI), `logos_host`, `liblogos_core` |
 | [logos-package](https://github.com/logos-co/logos-package) | Package format | `lgx` (CLI), `liblgx` (library) |
 | [logos-package-manager-module](https://github.com/logos-co/logos-package-manager-module) | Package management | `lgpm` (CLI), `package_manager_plugin` |
-| [logos-app](https://github.com/logos-co/logos-app) | Desktop app shell | `LogosApp` (GUI), MDI workspace, plugin loader |
+| [logos-basecamp](https://github.com/logos-co/logos-basecamp) | Desktop app shell | `LogosApp` (GUI), MDI workspace, plugin loader |
 
 ## Reference: CLI Tools Summary
 
@@ -1073,7 +1073,7 @@ experimental-features = nix-command flakes
 
 ### Module loads but LogosAPI is not available
 
-This happens when running a module outside the full Logos runtime (e.g., in the module viewer). The `LogosAPI` is only available when the module is loaded by `logoscore` or `logos-app`.
+This happens when running a module outside the full Logos runtime (e.g., in the module viewer). The `LogosAPI` is only available when the module is loaded by `logoscore` or `logos-basecamp`.
 
 ### Build fails finding Qt
 
@@ -1084,7 +1084,7 @@ nix develop   # Enter dev shell with all dependencies
 cmake -B build -GNinja && cmake --build build
 ```
 
-### Module not discovered by logos-app
+### Module not discovered by logos-basecamp
 
 Check that:
 1. The module binary is in the correct directory (modules dir for core, plugins dir for UI)

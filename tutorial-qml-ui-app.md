@@ -9,7 +9,7 @@ This is Part 2 of the Logos module tutorial series. In [Part 1](tutorial-wrappin
 - How QML UI plugins work in the Logos platform
 - The `logos.callModule()` bridge that connects QML to core modules
 - The project structure and metadata for a QML plugin
-- How to build, install, and run your UI inside `logos-app`
+- How to build, install, and run your UI inside `logos-basecamp`
 
 **Prerequisites:**
 
@@ -33,7 +33,7 @@ Before writing code, let's understand the architecture:
         |  loaded by                                           |  loaded by
         v                                                      v
 +---------------------------------------------------------------+
-|                        logos-app                               |
+|                        logos-basecamp                          |
 |   QML sandbox engine        |        logos_host process       |
 +---------------------------------------------------------------+
 ```
@@ -69,13 +69,13 @@ mkdir icons
 
 ### 1.2 Add an icon (optional)
 
-Place a PNG icon at `icons/calc.png`. This appears in the `logos-app` sidebar. If you don't have one, the app will use a default icon.
+Place a PNG icon at `icons/calc.png`. This appears in the `logos-basecamp` sidebar. If you don't have one, the app will use a default icon.
 
 ---
 
 ## Step 2: Write `metadata.json`
 
-This tells `logos-app` what your plugin is and how to load it.
+This tells `logos-basecamp` what your plugin is and how to load it.
 
 ```json
 {
@@ -101,7 +101,7 @@ This tells `logos-app` what your plugin is and how to load it.
 | `type`         | Must be `"ui_qml"` for QML UI plugins                               |
 | `pluginType`   | Must be `"qml"`                                                     |
 | `main`         | Entry point QML file — always `"Main.qml"`                          |
-| `dependencies` | Core modules this UI needs. `logos-app` loads these before your UI. |
+| `dependencies` | Core modules this UI needs. `logos-basecamp` loads these before your UI. |
 | `category`     | Groups plugins in the sidebar (e.g., `"tools"`, `"misc"`)           |
 | `icon`         | Path to the sidebar icon, relative to the plugin directory          |
 
@@ -186,7 +186,7 @@ This is the most important part — the function that calls your core module. Ad
         // The logos object is injected by the host at runtime.
         // It won't exist if you open Main.qml in a standalone QML viewer.
         if (typeof logos === "undefined" || !logos.callModule) {
-            root.errorText = "Logos bridge not available (run inside logos-app)"
+            root.errorText = "Logos bridge not available (run inside logos-basecamp)"
             return
         }
 
@@ -205,7 +205,7 @@ logos.callModule(moduleName, methodName, argsArray)
                     └── Module name from metadata.json (e.g., "calc_module")
 ```
 
-The call is synchronous from QML's perspective. Under the hood, `logos-app` routes it via IPC to the `logos_host` process running `calc_module`, which calls `CalcModulePlugin::add()`, which calls `calc_add()` from libcalc. The result comes back through the same chain.
+The call is synchronous from QML's perspective. Under the hood, `logos-basecamp` routes it via IPC to the `logos_host` process running `calc_module`, which calls `CalcModulePlugin::add()`, which calls `calc_add()` from libcalc. The result comes back through the same chain.
 
 ### 3.3 The complete file
 
@@ -464,7 +464,7 @@ Item {
         root.result = ""
 
         if (typeof logos === "undefined" || !logos.callModule) {
-            root.errorText = "Logos bridge not available (run inside logos-app)"
+            root.errorText = "Logos bridge not available (run inside logos-basecamp)"
             return
         }
 
@@ -606,12 +606,12 @@ That's it. A QML plugin is just its source files packaged for installation.
 
 ---
 
-## Step 6: Run in `logos-app`
+## Step 6: Run in `logos-basecamp`
 
-### 6.1 Build `logos-app`
+### 6.1 Build `logos-basecamp`
 
 ```bash
-nix build 'github:logos-co/logos-app#app' --out-link ./logos-app
+nix build 'github:logos-co/logos-basecamp#app' --out-link ./logos-basecamp
 ```
 
 ### 6.2 Set up the modules directory
@@ -637,14 +637,14 @@ mkdir -p ui-plugins
 ### 6.3 Launch
 
 ```bash
-./logos-app/bin/logos-app \
+./logos-basecamp/bin/logos-basecamp \
   --modules-dir ./modules \
   --ui-plugins-dir ./ui-plugins
 ```
 
 You should see:
 
-1. The `logos-app` window opens with a sidebar
+1. The `logos-basecamp` window opens with a sidebar
 2. "Calculator UI" appears as a tab (with your icon if you provided one)
 3. Click the tab to see your QML interface
 4. Enter numbers and click **Add**, **Multiply**, **Factorial**, or **Fibonacci**
@@ -658,7 +658,7 @@ Here's the full chain when you enter `3` and `5` and click **Add**:
 1. QML: Button.onClicked → callTwoOp("add", "3", "5")
 2. QML: callTwoOp() → callModule("add", [3, 5])
 3. QML: logos.callModule("calc_module", "add", [3, 5])
-4. logos-app: Routes call via IPC to logos_host process
+4. logos-basecamp: Routes call via IPC to logos_host process
 5. logos_host: QMetaObject::invokeMethod(plugin, "add", 3, 5)
 6. C++: CalcModulePlugin::add(3, 5) → calc_add(3, 5)
 7. C: Returns 8
@@ -676,7 +676,7 @@ For rapid iteration, use development mode. This watches your QML source files an
 
 ```bash
 # Point QML_UI at your source directory
-QML_UI=$(pwd) ./logos-app/bin/logos-app \
+QML_UI=$(pwd) ./logos-basecamp/bin/logos-basecamp \
   --modules-dir ./modules \
   --ui-plugins-dir ./ui-plugins
 ```
@@ -685,7 +685,7 @@ Edit `Main.qml`, save, and the UI updates without rebuilding.
 
 ### 7.2 Debugging
 
-Since QML plugins are sandboxed, you can't use `console.log()` to write to the terminal in production. But in development mode, `console.log()` output appears in the terminal where you launched `logos-app`.
+Since QML plugins are sandboxed, you can't use `console.log()` to write to the terminal in production. But in development mode, `console.log()` output appears in the terminal where you launched `logos-basecamp`.
 
 Add debug logging to your bridge function:
 
@@ -699,7 +699,7 @@ function callModule(method, args) {
 }
 ```
 
-### 7.3 Testing without `logos-app`
+### 7.3 Testing without `logos-basecamp`
 
 You can open `Main.qml` in any QML viewer (e.g., `qml` from Qt) to test the layout. The `logos` bridge won't be available, so clicking buttons will show "Logos bridge not available" — but you can verify the layout and styling work correctly.
 
@@ -732,7 +732,7 @@ nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
 ./pm/bin/lgpm --modules-dir ./ui-plugins install --file calc_ui.lgx
 ```
 
-> **Local vs portable:** Local builds of `logos-app` (via `nix build '.#app'`) expect **local** `.lgx` packages. Portable builds (via `nix build '.#bin-bundle-dir'`, `.#bin-appimage`, or `.#bin-macos-app`) expect **portable** `.lgx` packages. See the [logos-app README](https://github.com/logos-co/logos-app/blob/master/README.md) for details.
+> **Local vs portable:** Local builds of `logos-basecamp` (via `nix build '.#app'`) expect **local** `.lgx` packages. Portable builds (via `nix build '.#bin-bundle-dir'`, `.#bin-appimage`, or `.#bin-macos-app`) expect **portable** `.lgx` packages. See the [logos-basecamp README](https://github.com/logos-co/logos-basecamp/blob/master/README.md) for details.
 
 ---
 
