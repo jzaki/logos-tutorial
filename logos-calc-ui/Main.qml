@@ -5,7 +5,6 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    // State
     property string result: ""
     property string errorText: ""
 
@@ -19,262 +18,108 @@ Item {
             text: "Logos Calculator"
             font.pixelSize: 20
             font.weight: Font.DemiBold
-            color: "#1f2328"
+            color: "#ffffff"
             Layout.alignment: Qt.AlignHCenter
         }
 
-        Text {
-            text: "QML frontend for the calc_module (libcalc C library)"
-            font.pixelSize: 13
-            color: "#57606a"
-            Layout.alignment: Qt.AlignHCenter
-        }
-
-        // ── Two-operand section ────────────────────────────────
-        Rectangle {
+        // ── Two-operand operations ─────────────────────────────
+        RowLayout {
+            spacing: 12
             Layout.fillWidth: true
-            Layout.preferredHeight: twoOpColumn.implicitHeight + 32
-            color: "#f6f8fa"
-            radius: 8
-            border.color: "#d1d9e0"
-            border.width: 1
 
-            ColumnLayout {
-                id: twoOpColumn
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 12
+            TextField {
+                id: inputA
+                placeholderText: "a"
+                Layout.preferredWidth: 80
+                validator: IntValidator {}
+            }
 
-                Text {
-                    text: "Two-operand operations"
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
-                    color: "#1f2328"
-                }
+            TextField {
+                id: inputB
+                placeholderText: "b"
+                Layout.preferredWidth: 80
+                validator: IntValidator {}
+            }
 
-                RowLayout {
-                    spacing: 12
-                    Layout.fillWidth: true
+            Button {
+                text: "Add"
+                onClicked: callTwoOp("add", inputA.text, inputB.text)
+            }
 
-                    TextField {
-                        id: inputA
-                        placeholderText: "a"
-                        Layout.preferredWidth: 100
-                        validator: IntValidator {}
-                    }
-
-                    TextField {
-                        id: inputB
-                        placeholderText: "b"
-                        Layout.preferredWidth: 100
-                        validator: IntValidator {}
-                    }
-
-                    Button {
-                        text: "Add"
-                        onClicked: callTwoOp("add", inputA.text, inputB.text)
-
-                        background: Rectangle {
-                            implicitWidth: 80
-                            implicitHeight: 36
-                            color: parent.pressed ? "#1a7f37" : "#238636"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "#ffffff"
-                            font.pixelSize: 13
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    Button {
-                        text: "Multiply"
-                        onClicked: callTwoOp("multiply", inputA.text, inputB.text)
-
-                        background: Rectangle {
-                            implicitWidth: 80
-                            implicitHeight: 36
-                            color: parent.pressed ? "#1a7f37" : "#238636"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "#ffffff"
-                            font.pixelSize: 13
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-                }
+            Button {
+                text: "Multiply"
+                onClicked: callTwoOp("multiply", inputA.text, inputB.text)
             }
         }
 
-        // ── Single-operand section ─────────────────────────────
-        Rectangle {
+        // ── Single-operand operations ──────────────────────────
+        RowLayout {
+            spacing: 12
             Layout.fillWidth: true
-            Layout.preferredHeight: oneOpColumn.implicitHeight + 32
-            color: "#f6f8fa"
-            radius: 8
-            border.color: "#d1d9e0"
-            border.width: 1
 
-            ColumnLayout {
-                id: oneOpColumn
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 12
-
-                Text {
-                    text: "Single-operand operations"
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
-                    color: "#1f2328"
-                }
-
-                RowLayout {
-                    spacing: 12
-                    Layout.fillWidth: true
-
-                    TextField {
-                        id: inputN
-                        placeholderText: "n"
-                        Layout.preferredWidth: 100
-                        validator: IntValidator { bottom: 0 }
-                    }
-
-                    Button {
-                        text: "Factorial"
-                        onClicked: callOneOp("factorial", inputN.text)
-
-                        background: Rectangle {
-                            implicitWidth: 80
-                            implicitHeight: 36
-                            color: parent.pressed ? "#0a58ca" : "#0969da"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "#ffffff"
-                            font.pixelSize: 13
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    Button {
-                        text: "Fibonacci"
-                        onClicked: callOneOp("fibonacci", inputN.text)
-
-                        background: Rectangle {
-                            implicitWidth: 80
-                            implicitHeight: 36
-                            color: parent.pressed ? "#0a58ca" : "#0969da"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "#ffffff"
-                            font.pixelSize: 13
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-                }
+            TextField {
+                id: inputN
+                placeholderText: "n"
+                Layout.preferredWidth: 80
+                validator: IntValidator { bottom: 0 }
             }
-        }
 
-        // ── Info section ───────────────────────────────────────
-        Button {
-            text: "Get libcalc version"
-            onClicked: callNoArg("libVersion")
-
-            background: Rectangle {
-                implicitWidth: 160
-                implicitHeight: 36
-                color: parent.pressed ? "#32383f" : "#24292f"
-                radius: 6
+            Button {
+                text: "Factorial"
+                onClicked: callOneOp("factorial", inputN.text)
             }
-            contentItem: Text {
-                text: parent.text
-                color: "#ffffff"
-                font.pixelSize: 13
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+
+            Button {
+                text: "Fibonacci"
+                onClicked: callOneOp("fibonacci", inputN.text)
+            }
+
+            Button {
+                text: "libcalc version"
+                onClicked: callModule("libVersion", [])
             }
         }
 
         // ── Result display ─────────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 64
-            color: root.errorText.length > 0 ? "#fff1f0" : "#dafbe1"
+            height: 56
+            color: root.errorText.length > 0 ? "#3d1a1a" : "#1a2d1a"
             radius: 8
-            border.color: root.errorText.length > 0 ? "#ffcdd2" : "#adf0b9"
-            border.width: 1
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 4
-
-                Text {
-                    text: root.errorText.length > 0 ? "Error" : "Result"
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    color: root.errorText.length > 0 ? "#cf222e" : "#116329"
-                }
-
-                Text {
-                    text: root.errorText.length > 0 ? root.errorText
-                            : (root.result.length > 0 ? root.result
-                                                      : "Press a button above")
-                    font.pixelSize: 16
-                    font.weight: Font.Medium
-                    color: root.errorText.length > 0 ? "#cf222e" : "#1f2328"
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
+            Text {
+                anchors.centerIn: parent
+                text: root.errorText.length > 0 ? root.errorText
+                        : (root.result.length > 0 ? root.result : "Enter values and press a button")
+                color: root.errorText.length > 0 ? "#f85149" : "#56d364"
+                font.pixelSize: 15
             }
         }
 
-        // Push everything up
         Item { Layout.fillHeight: true }
     }
 
-    // ── Helper functions ───────────────────────────────────────
+    // ── Logos bridge helpers ───────────────────────────────────
 
     function callModule(method, args) {
         root.errorText = ""
         root.result = ""
 
         if (typeof logos === "undefined" || !logos.callModule) {
-            root.errorText = "Logos bridge not available (run inside logos-app)"
+            root.errorText = "Logos bridge not available"
             return
         }
 
-        var res = logos.callModule("calc_module", method, args)
-        root.result = String(res)
+        root.result = String(logos.callModule("calc_module", method, args))
     }
 
     function callTwoOp(method, a, b) {
-        if (a === "" || b === "") {
-            root.errorText = "Enter values for both a and b"
-            return
-        }
+        if (a === "" || b === "") { root.errorText = "Enter values for a and b"; return }
         callModule(method, [parseInt(a), parseInt(b)])
     }
 
     function callOneOp(method, n) {
-        if (n === "") {
-            root.errorText = "Enter a value for n"
-            return
-        }
+        if (n === "") { root.errorText = "Enter a value for n"; return }
         callModule(method, [parseInt(n)])
-    }
-
-    function callNoArg(method) {
-        callModule(method, [])
     }
 }

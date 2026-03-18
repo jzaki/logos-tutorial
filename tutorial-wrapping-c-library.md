@@ -729,7 +729,7 @@ nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
 ./pm/bin/lgpm --modules-dir ./modules install --file calc_module.lgx
 ```
 
-> **Note:** Local builds of `logoscore` / `logos-app` (via `nix build`) expect **local** `.lgx` packages. Portable builds (via `nix build '.#bin-bundle-dir'`, `.#bin-appimage`, or `.#bin-macos-app`) expect **portable** `.lgx` packages. See the [logos-app README](https://github.com/logos-co/logos-app/blob/master/README.md) for details.
+> **Note:** Local builds of `logoscore` / `logos-basecamp` (via `nix build`) expect **local** `.lgx` packages. Portable builds (via `nix build '.#bin-bundle-dir'`, `.#bin-appimage`, or `.#bin-macos-app`) expect **portable** `.lgx` packages. See the [logos-basecamp README](https://github.com/logos-co/logos-basecamp/blob/master/README.md) for details.
 
 ---
 

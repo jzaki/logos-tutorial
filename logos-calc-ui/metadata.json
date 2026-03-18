@@ -2,12 +2,9 @@
   "name": "calc_ui",
   "version": "1.0.0",
   "description": "Calculator UI - QML frontend for the calc_module",
-  "author": "",
   "type": "ui_qml",
-  "pluginType": "qml",
   "main": "Main.qml",
   "dependencies": ["calc_module"],
   "category": "tools",
-  "capabilities": [],
   "icon": "icons/calc.png"
 }
