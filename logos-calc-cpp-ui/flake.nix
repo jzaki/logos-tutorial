@@ -3,16 +3,17 @@
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    nixpkgs.follows = "logos-module-builder/nixpkgs";
+    logos-nix.url = "github:logos-co/logos-nix";
+    nixpkgs.follows = "logos-nix/nixpkgs";
 
     logos-standalone-app.url = "github:logos-co/logos-standalone-app";
     logos-standalone-app.inputs.logos-liblogos.inputs.nixpkgs.follows =
-      "logos-module-builder/nixpkgs";
+      "logos-nix/nixpkgs";
 
     calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";
   };
 
-  outputs = { self, logos-module-builder, logos-standalone-app, nixpkgs, calc_module }:
+  outputs = { self, logos-module-builder, logos-standalone-app, nixpkgs, calc_module, ... }:
     let
       systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);

@@ -2,7 +2,7 @@
   "nodes": {
     "logos-capability-module": {
       "inputs": {
-        "logos-cpp-sdk": "logos-cpp-sdk_4",
+        "logos-cpp-sdk": "logos-cpp-sdk_3",
         "logos-liblogos": "logos-liblogos_2",
         "nixpkgs": [
           "logos-standalone-app",
@@ -28,24 +28,6 @@
     },
     "logos-cpp-sdk": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1773672219,
-        "narHash": "sha256-p+kv2WHokT40rScnSFSIDp/EeFLaDUsTHW6QT6ejKuc=",
-        "owner": "logos-co",
-        "repo": "logos-cpp-sdk",
-        "rev": "a4bd66cd6eb04ee7140bb940b1d49d72d60248de",
-        "type": "github"
-      },
-      "original": {
-        "owner": "logos-co",
-        "repo": "logos-cpp-sdk",
-        "type": "github"
-      }
-    },
-    "logos-cpp-sdk_2": {
-      "inputs": {
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
@@ -62,7 +44,7 @@
         "type": "github"
       }
     },
-    "logos-cpp-sdk_3": {
+    "logos-cpp-sdk_2": {
       "inputs": {
         "nixpkgs": "nixpkgs_3"
       },
@@ -80,7 +62,7 @@
         "type": "github"
       }
     },
-    "logos-cpp-sdk_4": {
+    "logos-cpp-sdk_3": {
       "inputs": {
         "nixpkgs": "nixpkgs_4"
       },
@@ -98,7 +80,7 @@
         "type": "github"
       }
     },
-    "logos-cpp-sdk_5": {
+    "logos-cpp-sdk_4": {
       "inputs": {
         "nixpkgs": "nixpkgs_5"
       },
@@ -116,7 +98,7 @@
         "type": "github"
       }
     },
-    "logos-cpp-sdk_6": {
+    "logos-cpp-sdk_5": {
       "inputs": {
         "nixpkgs": "nixpkgs_6"
       },
@@ -134,7 +116,7 @@
         "type": "github"
       }
     },
-    "logos-cpp-sdk_7": {
+    "logos-cpp-sdk_6": {
       "inputs": {
         "nixpkgs": "nixpkgs_7"
       },
@@ -154,7 +136,7 @@
     },
     "logos-design-system": {
       "inputs": {
-        "logos-cpp-sdk": "logos-cpp-sdk_3",
+        "logos-cpp-sdk": "logos-cpp-sdk_2",
         "nixpkgs": [
           "logos-standalone-app",
           "logos-design-system",
@@ -179,12 +161,12 @@
     "logos-liblogos": {
       "inputs": {
         "logos-capability-module": "logos-capability-module",
-        "logos-cpp-sdk": "logos-cpp-sdk_6",
+        "logos-cpp-sdk": "logos-cpp-sdk_5",
         "logos-module": "logos-module",
         "nix-bundle-appimage": "nix-bundle-appimage",
         "nix-bundle-dir": "nix-bundle-dir_2",
         "nixpkgs": [
-          "logos-cpp-sdk",
+          "logos-nix",
           "nixpkgs"
         ]
       },
@@ -204,7 +186,7 @@
     },
     "logos-liblogos_2": {
       "inputs": {
-        "logos-cpp-sdk": "logos-cpp-sdk_5",
+        "logos-cpp-sdk": "logos-cpp-sdk_4",
         "nixpkgs": [
           "logos-standalone-app",
           "logos-liblogos",
@@ -230,7 +212,7 @@
     },
     "logos-module": {
       "inputs": {
-        "logos-cpp-sdk": "logos-cpp-sdk_7",
+        "logos-cpp-sdk": "logos-cpp-sdk_6",
         "nixpkgs": [
           "logos-standalone-app",
           "logos-liblogos",
@@ -253,9 +235,27 @@
         "type": "github"
       }
     },
+    "logos-nix": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1773955630,
+        "narHash": "sha256-KqzMoWYIVp2xMgphs7v02T/BE54RKMFxpdC2duhJKG0=",
+        "owner": "logos-co",
+        "repo": "logos-nix",
+        "rev": "0e9e6d66ab8eb34f59e45ed448f7dc29130feb88",
+        "type": "github"
+      },
+      "original": {
+        "owner": "logos-co",
+        "repo": "logos-nix",
+        "type": "github"
+      }
+    },
     "logos-standalone-app": {
       "inputs": {
-        "logos-cpp-sdk": "logos-cpp-sdk_2",
+        "logos-cpp-sdk": "logos-cpp-sdk",
         "logos-design-system": "logos-design-system",
         "logos-liblogos": "logos-liblogos",
         "nixpkgs": [
@@ -484,10 +484,10 @@
     },
     "root": {
       "inputs": {
-        "logos-cpp-sdk": "logos-cpp-sdk",
+        "logos-nix": "logos-nix",
         "logos-standalone-app": "logos-standalone-app",
         "nixpkgs": [
-          "logos-cpp-sdk",
+          "logos-nix",
           "nixpkgs"
         ]
       }

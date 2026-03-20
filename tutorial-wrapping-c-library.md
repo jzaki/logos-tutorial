@@ -285,7 +285,8 @@ logos_module(
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    nixpkgs.follows = "logos-module-builder/nixpkgs";
+    logos-nix.url = "github:logos-co/logos-nix";
+    nixpkgs.follows = "logos-nix/nixpkgs";
   };
 
   outputs = { self, logos-module-builder, nixpkgs }:
@@ -843,7 +844,8 @@ Instead of pre-building the library and placing it in `lib/`, you can have Nix f
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    nixpkgs.follows = "logos-module-builder/nixpkgs";
+    logos-nix.url = "github:logos-co/logos-nix";
+    nixpkgs.follows = "logos-nix/nixpkgs";
 
     # Fetch the library source (non-flake)
     libfoo-src = {
