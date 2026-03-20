@@ -2,52 +2,46 @@
   description = "Calculator QML UI Plugin for Logos - frontend for calc_module";
 
   inputs = {
-    logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
-    nixpkgs.follows = "logos-cpp-sdk/nixpkgs";
+    logos-nix.url = "github:logos-co/logos-nix";
+    nixpkgs.follows = "logos-nix/nixpkgs";
+
+    logos-standalone-app.url = "github:logos-co/logos-standalone-app";
+    logos-standalone-app.inputs.logos-liblogos.inputs.nixpkgs.follows =
+      "logos-nix/nixpkgs";
   };
 
-  outputs = { self, nixpkgs, logos-cpp-sdk }:
+  outputs = { self, nixpkgs, logos-standalone-app, ... }:
     let
       systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f {
         pkgs = import nixpkgs { inherit system; };
       });
-    in
-    {
+    in {
       packages = forAllSystems ({ pkgs }: let
         plugin = pkgs.stdenv.mkDerivation {
           pname = "logos-calc-ui-plugin";
           version = "1.0.0";
           src = ./.;
-
-          dontUnpack = false;
           phases = [ "unpackPhase" "installPhase" ];
-
           installPhase = ''
-            runHook preInstall
-
-            dest="$out/lib"
-            mkdir -p "$dest/icons"
-
-            cp $src/Main.qml    "$dest/Main.qml"
-            cp $src/metadata.json "$dest/metadata.json"
-
-            # Copy icon if present
+            mkdir -p $out/lib/icons
+            cp $src/Main.qml      $out/lib/Main.qml
+            cp $src/metadata.json $out/lib/metadata.json
             if [ -f "$src/icons/calc.png" ]; then
-              cp $src/icons/calc.png "$dest/icons/calc.png"
+              cp $src/icons/calc.png $out/lib/icons/calc.png
             fi
-
-            runHook postInstall
           '';
-
-          meta = with pkgs.lib; {
-            description = "Calculator QML UI Plugin for Logos";
-            platforms = platforms.unix;
-          };
         };
-      in {
-        default = plugin;
-        lib = plugin;
-      });
+      in { default = plugin; lib = plugin; });
+
+      apps = forAllSystems ({ pkgs }:
+        let
+          standalone = logos-standalone-app.packages.${pkgs.system}.default;
+          plugin = self.packages.${pkgs.system}.default;
+          run = pkgs.writeShellScript "run-calc-ui-standalone" ''
+            exec ${standalone}/bin/logos-standalone "${plugin}/lib" "$@"
+          '';
+        in { default = { type = "app"; program = "${run}"; }; }
+      );
     };
 }

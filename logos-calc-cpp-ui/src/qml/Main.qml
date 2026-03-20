@@ -15,9 +15,8 @@ Item {
 
         // ── Title ──────────────────────────────────────────────
         Text {
-            text: "Logos Calculator"
+            text: "Logos Calculator (C++ backend)"
             font.pixelSize: 20
-            font.weight: Font.DemiBold
             color: "#ffffff"
             Layout.alignment: Qt.AlignHCenter
         }
@@ -43,12 +42,12 @@ Item {
 
             Button {
                 text: "Add"
-                onClicked: callTwoOp("add", inputA.text, inputB.text)
+                onClicked: root.result = String(backend.add(inputA.text, inputB.text))
             }
 
             Button {
                 text: "Multiply"
-                onClicked: callTwoOp("multiply", inputA.text, inputB.text)
+                onClicked: root.result = String(backend.multiply(inputA.text, inputB.text))
             }
         }
 
@@ -66,17 +65,17 @@ Item {
 
             Button {
                 text: "Factorial"
-                onClicked: callOneOp("factorial", inputN.text)
+                onClicked: root.result = String(backend.factorial(inputN.text))
             }
 
             Button {
                 text: "Fibonacci"
-                onClicked: callOneOp("fibonacci", inputN.text)
+                onClicked: root.result = String(backend.fibonacci(inputN.text))
             }
 
             Button {
                 text: "libcalc version"
-                onClicked: callModule("libVersion", [])
+                onClicked: root.result = backend.libVersion()
             }
         }
 
@@ -97,29 +96,5 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
-    }
-
-    // ── Logos bridge helpers ───────────────────────────────────
-
-    function callModule(method, args) {
-        root.errorText = ""
-        root.result = ""
-
-        if (typeof logos === "undefined" || !logos.callModule) {
-            root.errorText = "Logos bridge not available"
-            return
-        }
-
-        root.result = String(logos.callModule("calc_module", method, args))
-    }
-
-    function callTwoOp(method, a, b) {
-        if (a === "" || b === "") { root.errorText = "Enter values for a and b"; return }
-        callModule(method, [parseInt(a), parseInt(b)])
-    }
-
-    function callOneOp(method, n) {
-        if (n === "") { root.errorText = "Enter a value for n"; return }
-        callModule(method, [parseInt(n)])
     }
 }
