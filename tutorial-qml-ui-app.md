@@ -82,6 +82,8 @@ Replace the template contents with your plugin's details:
 
 The `dependencies` field tells the host to load `calc_module` before showing your UI.
 
+> **Naming convention:** Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match the dependency name — e.g., `calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
+
 ---
 
 ## Step 3: Write `Main.qml`
@@ -222,7 +224,7 @@ The `logos` object is injected by the host at runtime. The `callModule` helper c
 
 ## Step 4: Update `flake.nix`
 
-The template already has everything wired up. The only change needed is the description:
+The template already has everything wired up. Update the description and add `calc_module` as a dependency input:
 
 ```nix
 {
@@ -230,28 +232,21 @@ The template already has everything wired up. The only change needed is the desc
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    nixpkgs.follows = "logos-module-builder/nixpkgs";
-
     logos-standalone-app.url = "github:logos-co/logos-standalone-app";
+    calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";  # must match dependency name in metadata.json
   };
 
-  outputs = { logos-module-builder, logos-standalone-app, nixpkgs, ... }: {
-    apps = nixpkgs.lib.genAttrs
-      [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
-      (system: {
-        default = logos-module-builder.lib.mkStandaloneApp {
-          pkgs = import nixpkgs { inherit system; };
-          standalone = logos-standalone-app.packages.${system}.default;
-          qmlSrc = ./.;
-          metadataFile = ./metadata.json;
-          format = "qml";
-        };
-      });
-  };
+  outputs = inputs@{ logos-module-builder, logos-standalone-app, ... }:
+    logos-module-builder.lib.mkLogosQmlModule {
+      src = ./.;
+      configFile = ./metadata.json;
+      flakeInputs = inputs;
+      logosStandalone = logos-standalone-app;
+    };
 }
 ```
 
-There is no `packages` output — QML modules have no compilation step so there is nothing to build separately. `qmlSrc = ./.` tells `mkStandaloneApp` to copy the entire source directory into a Nix store directory (any number of `.qml` files, subdirectories, assets), then produce a shell script that calls `logos-standalone-app` with it. `nix run .` is the only entry point needed.
+`mkLogosQmlModule` handles everything — it stages QML files, metadata, and icons into a plugin directory. `logosStandalone` wires up `apps.default` so `nix run .` launches the UI in a standalone window. `flakeInputs = inputs` passes all inputs so that dependencies declared in `metadata.json` are resolved automatically — note that the input attribute name (`calc_module`) must match the dependency name.
 
 ---
 
@@ -462,7 +457,7 @@ nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
 | | Core Module (Part 1) | QML UI Plugin (Part 2) |
 |---|---|---|
 | Language | C++ | QML / JavaScript |
-| Files | `.cpp`, `.h`, `CMakeLists.txt`, `module.yaml` | `Main.qml`, `metadata.json` |
+| Files | `.cpp`, `.h`, `CMakeLists.txt`, `metadata.json` | `Main.qml`, `metadata.json` |
 | Compilation | Yes (CMake → `.so`) | No (file copy) |
 | `metadata.type` | `"core"` | `"ui_qml"` |
 | Test command | `logoscore -m ./result/lib -l calc_module` | `nix run .` |

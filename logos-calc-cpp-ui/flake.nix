@@ -7,12 +7,11 @@
     calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";
   };
 
-  outputs = { logos-module-builder, logos-standalone-app, calc_module, ... }:
+  outputs = inputs@{ logos-module-builder, logos-standalone-app, calc_module, ... }:
     logos-module-builder.lib.mkLogosModule {
       src = ./.;
-      configFile = ./module.yaml;
-      moduleInputs = { inherit calc_module; };
+      configFile = ./metadata.json;
+      flakeInputs = inputs;
       logosStandalone = logos-standalone-app;
-      iconFiles = [ ./icons/calc.png ];
     };
 }

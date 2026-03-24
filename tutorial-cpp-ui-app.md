@@ -57,7 +57,6 @@ This gives you:
 ```
 logos-calc-ui-cpp/
 ├── flake.nix
-├── module.yaml
 ├── metadata.json
 ├── CMakeLists.txt
 └── src/
@@ -76,49 +75,42 @@ mv src/ui_example_plugin.cpp  src/calc_ui_cpp_plugin.cpp
 
 ---
 
-## Step 2: `module.yaml`
+## Step 2: `metadata.json`
 
-```yaml
-name: calc_ui_cpp
-version: 1.0.0
-type: ui
-category: tools
-description: "Calculator C++ UI — widget frontend for calc_module"
-
-dependencies:
-  - calc_module
-
-nix_packages:
-  build: []
-  runtime: []
-
-external_libraries: []
-
-cmake:
-  find_packages: []
-  extra_sources: []
-  proto_files: []
-```
-
----
-
-## Step 3: `metadata.json`
+`metadata.json` is the single source of truth — it contains both the runtime metadata (embedded into the plugin binary by Qt) and the build configuration (read by `logos-module-builder` via the `nix` section).
 
 ```json
 {
   "name": "calc_ui_cpp",
   "version": "1.0.0",
-  "description": "Calculator C++ UI — widget frontend for calc_module",
   "type": "ui",
+  "category": "tools",
+  "description": "Calculator C++ UI — widget frontend for calc_module",
   "main": "calc_ui_cpp_plugin",
+  "icon": "icons/calc.png",
   "dependencies": ["calc_module"],
-  "category": "tools"
+
+  "nix": {
+    "packages": {
+      "build": [],
+      "runtime": []
+    },
+    "external_libraries": [],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": [],
+      "extra_link_libraries": []
+    }
+  }
 }
 ```
 
+> **Naming convention:** Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match — e.g., `calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
+
 ---
 
-## Step 4: `CMakeLists.txt`
+## Step 3: `CMakeLists.txt`
 
 ```cmake
 cmake_minimum_required(VERSION 3.14)
@@ -144,11 +136,11 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 target_link_libraries(calc_ui_cpp_module_plugin PRIVATE Qt6::Widgets)
 ```
 
-> For Option A (QML inside the plugin) you will add `Quick QuickWidgets` and `qt_add_resources` — covered in [Step 7](#step-7-option-a--qml-loaded-from-c).
+> For Option A (QML inside the plugin) you will add `Quick QuickWidgets` and `qt_add_resources` — covered in [Step 6](#step-6-option-a--qml-loaded-from-c).
 
 ---
 
-## Step 5: Interface Header (`src/calc_ui_cpp_interface.h`)
+## Step 4: Interface Header (`src/calc_ui_cpp_interface.h`)
 
 ```cpp
 #ifndef CALC_UI_CPP_INTERFACE_H
@@ -170,13 +162,13 @@ Q_DECLARE_INTERFACE(CalcUiCppInterface, CalcUiCppInterface_iid)
 
 ---
 
-## Step 6: Backend Class
+## Step 5: Backend Class
 
-The backend class is the key addition over the QML plugin. It holds a `LogosModules*` wrapper — a typed C++ SDK generated at build time from `module.yaml` — and exposes `Q_INVOKABLE` methods that call `calc_module` through it. Because the calls go through a generated typed class, argument types are preserved — no `QString`/`int` coercion issues.
+The backend class is the key addition over the QML plugin. It holds a `LogosModules*` wrapper — a typed C++ SDK generated at build time from `metadata.json` — and exposes `Q_INVOKABLE` methods that call `calc_module` through it. Because the calls go through a generated typed class, argument types are preserved — no `QString`/`int` coercion issues.
 
 ### How the generated SDK works
 
-When `module.yaml` declares `dependencies: [calc_module]` and `calc_module` is passed as a flake input via `moduleInputs`, the build system runs `logos-cpp-generator` before compilation. This produces:
+When `metadata.json` declares `"dependencies": ["calc_module"]` and `calc_module` is passed as a flake input via `flakeInputs`, the build system runs `logos-cpp-generator` before compilation. This produces:
 
 - `logos_sdk.h` / `logos_sdk.cpp` — the `LogosModules` umbrella class with one typed member per dependency
 - `calc_module_api.h` / `calc_module_api.cpp` — the per-module wrapper included by `logos_sdk.h`
@@ -197,7 +189,7 @@ This is the same pattern used in production modules such as `logos-storage-ui`.
 
 #include <QObject>
 #include <QString>
-#include "logos_sdk.h"   // generated at build time from module.yaml dependencies
+#include "logos_sdk.h"   // generated at build time from metadata.json dependencies
 
 class LogosAPI;
 
@@ -240,11 +232,11 @@ QString CalcBackend::libVersion()           { return m_logos->calc_module.libVer
 
 ---
 
-## Step 7: Option A — QML Loaded from C++
+## Step 6: Option A — QML Loaded from C++
 
 The plugin loads `src/qml/Main.qml` into a `QQuickWidget` and exposes `CalcBackend` as a QML context property. The QML is identical in structure to `logos-calc-ui/Main.qml` (Part 2), but calls `backend.*` methods directly instead of routing through the `logos.callModule()` IPC bridge — so argument types are preserved and there is no sandboxing overhead.
 
-### 7.1 Add the QML file
+### 6.1 Add the QML file
 
 Create `src/qml/Main.qml`. The structure mirrors `logos-calc-ui/Main.qml` exactly; the only difference is that buttons call `backend.*` methods directly instead of routing through `logos.callModule(...)`:
 
@@ -322,7 +314,7 @@ Item {
 }
 ```
 
-### 7.2 Update `CMakeLists.txt`
+### 6.2 Update `CMakeLists.txt`
 
 Add `Quick` and `QuickWidgets`, and embed the QML as a Qt resource:
 
@@ -360,7 +352,7 @@ qt_add_resources(calc_ui_cpp_module_plugin "qml_resources"
 )
 ```
 
-### 7.3 `createWidget()` — load QML
+### 6.3 `createWidget()` — load QML
 
 Replace `calc_ui_cpp_plugin.cpp` with:
 
@@ -414,7 +406,7 @@ void CalcUiCppPlugin::destroyWidget(QWidget* widget)
 }
 ```
 
-### 7.4 Dev Mode
+### 6.4 Dev Mode
 
 When `QML_PATH` is set, the plugin loads `Main.qml` from disk instead of the embedded resource. You can edit QML layout, styling, and property bindings without a Nix rebuild — just restart the app to pick up changes.
 
@@ -427,14 +419,14 @@ QML_PATH=$PWD/src/qml \
 
 > **What still requires a rebuild:**
 > - Changes to `.cpp` / `.h` files (backend logic, plugin interface)
-> - Changes to `CMakeLists.txt` or `module.yaml`
+> - Changes to `CMakeLists.txt` or `metadata.json`
 >
 > **What does not require a rebuild:**
 > - Any `.qml` change — layout, styling, property bindings, JS logic
 
 ---
 
-## Step 8: Option B — Pure Qt Widget
+## Step 7: Option B — Pure Qt Widget
 
 The plugin creates a standard Qt widget using layouts and connects button clicks to the backend. No QML, no additional Qt modules — just `Qt6::Widgets`.
 
@@ -577,11 +569,11 @@ void CalcUiCppPlugin::destroyWidget(QWidget* widget)
 
 ---
 
-## Step 9: `flake.nix`
+## Step 8: `flake.nix`
 
-Pass `standaloneApp` to `mkLogosModule` and you get `apps.default` (i.e. `nix run`) for free — no manual `apps` block required.
+Pass `logosStandalone` to `mkLogosModule` and you get `apps.default` (i.e. `nix run`) for free — no manual `apps` block required.
 
-**Important — `moduleInputs`:** Because `module.yaml` declares `dependencies: [calc_module]`, the build system runs `logos-cpp-generator` before compiling your C++ sources. The generator introspects `calc_module`'s built plugin to produce `logos_sdk.h` / `logos_sdk.cpp` (and per-module `calc_module_api.h` / `calc_module_api.cpp`). These are the files your backend includes as `#include "logos_sdk.h"`. For this to work, `calc_module` must be available as a built Nix package at code-generation time — that is what `moduleInputs` provides. Without it, the build fails with `'logos_sdk.h' file not found`.
+**Important — `flakeInputs`:** Because `metadata.json` declares `"dependencies": ["calc_module"]`, the build system runs `logos-cpp-generator` before compiling your C++ sources. The generator introspects `calc_module`'s built plugin to produce `logos_sdk.h` / `logos_sdk.cpp` (and per-module `calc_module_api.h` / `calc_module_api.cpp`). These are the files your backend includes as `#include "logos_sdk.h"`. For this to work, `calc_module` must be available as a built Nix package at code-generation time — that is what `flakeInputs` provides (the builder discovers dependency inputs by matching their names against the `dependencies` array in `metadata.json`). Without it, the build fails with `'logos_sdk.h' file not found`.
 
 ```nix
 {
@@ -593,24 +585,23 @@ Pass `standaloneApp` to `mkLogosModule` and you get `apps.default` (i.e. `nix ru
     calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";
   };
 
-  outputs = { logos-module-builder, logos-standalone-app, calc_module, ... }:
+  outputs = inputs@{ logos-module-builder, logos-standalone-app, calc_module, ... }:
     logos-module-builder.lib.mkLogosModule {
       src = ./.;
-      configFile = ./module.yaml;
-      moduleInputs = { inherit calc_module; };
+      configFile = ./metadata.json;
+      flakeInputs = inputs;
       logosStandalone = logos-standalone-app;
-      iconFiles = [ ./icons/calc.png ];
     };
 }
 ```
 
-`standaloneApp` tells `mkLogosModule` to wire up `apps.default` automatically. It stages the compiled plugin alongside `metadata.json` and any icon files into a Nix store directory, then produces a shell script that calls `logos-standalone-app` with that directory — exactly what `nix run` executes.
+`logosStandalone` tells `mkLogosModule` to wire up `apps.default` automatically. It stages the compiled plugin alongside `metadata.json` and any icon files into a Nix store directory, then produces a shell script that calls `logos-standalone-app` with that directory — exactly what `nix run` executes.
 
 ---
 
-## Step 10: Build and Test
+## Step 9: Build and Test
 
-### 10.1 Build
+### 9.1 Build
 
 ```bash
 git add -A
@@ -625,7 +616,7 @@ lm ./result/lib/calc_ui_cpp_plugin.dylib
 
 You should see `createWidget` and `destroyWidget` in the methods list.
 
-### 10.2 UI only (layout preview)
+### 9.2 UI only (layout preview)
 
 ```bash
 nix run . --override-input calc_module path:../logos-calc-module
@@ -635,7 +626,7 @@ The widget opens. No backend connected yet, so button clicks will silently retur
 
 > **Why `--override-input`?** `calc_module.url` in `flake.nix` points to the published GitHub URL. For local development, `--override-input` redirects it to the local sibling directory. This is the same mechanism `ws build --local` / `ws build --auto-local` uses throughout the workspace.
 
-### 10.3 Full functionality (with modules)
+### 9.3 Full functionality (with modules)
 
 ```bash
 nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
@@ -657,9 +648,9 @@ nix run . --override-input calc_module path:../logos-calc-module -- --modules-di
 
 ---
 
-## Step 11: Load in `logos-basecamp`
+## Step 10: Load in `logos-basecamp`
 
-### 11.1 Create LGX packages
+### 10.1 Create LGX packages
 
 ```bash
 # Package calc_module (from Part 1)
@@ -671,7 +662,7 @@ cd ../logos-calc-ui-cpp
 nix bundle --bundler 'github:logos-co/nix-bundle-lgx#portable' '.' -o lgx-calc-ui-cpp
 ```
 
-### 11.2 Install via logos-basecamp UI
+### 10.2 Install via logos-basecamp UI
 
 1. Open `logos-basecamp`
 2. Go to **Package Manager**
@@ -681,7 +672,7 @@ nix bundle --bundler 'github:logos-co/nix-bundle-lgx#portable' '.' -o lgx-calc-u
 
 The "Calculator" tab appears in the sidebar.
 
-### 11.3 Install via CLI (alternative)
+### 10.3 Install via CLI (alternative)
 
 ```bash
 nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
@@ -689,7 +680,7 @@ nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
 ./pm/bin/lgpm install --file lgx-calc-ui-cpp/*.lgx
 ```
 
-### 11.4 Build logos-basecamp from source
+### 10.4 Build logos-basecamp from source
 
 Build a local `logos-basecamp` binary, then use `lgpm` to populate a modules directory and run it:
 

@@ -25,7 +25,7 @@ This tutorial walks you through wrapping a C shared library (`.so` on Linux, `.d
 
 ## Step 1: Scaffold the Module Project
 
-Before writing any C code, scaffold the Logos module project using the official template. This gives you the correct `flake.nix`, `module.yaml`, directory structure, and build configuration out of the box.
+Before writing any C code, scaffold the Logos module project using the official template. This gives you the correct `flake.nix`, `metadata.json`, directory structure, and build configuration out of the box.
 
 ### 1.1 Create the project using the module builder template
 
@@ -38,7 +38,7 @@ nix flake init -t github:logos-co/logos-module-builder#with-external-lib
 # nix flake init -t github:logos-co/logos-module-builder
 ```
 
-This generates the skeleton files (`flake.nix`, `module.yaml`, `CMakeLists.txt`, etc.) pre-configured for the logos-module-builder. You then customize them for your specific library.
+This generates the skeleton files (`flake.nix`, `metadata.json`, `CMakeLists.txt`, etc.) pre-configured for the logos-module-builder. You then customize them for your specific library.
 
 > **Alternative approach:** You can also create the C library as a separate project, build it there, then copy the resulting `.so`/`.dylib` and header files into the module's `lib/` directory. This can be cleaner for larger libraries with their own build systems.
 
@@ -177,9 +177,8 @@ If you used the template in Step 1.1, you already have the skeleton files. Now c
 ```
 logos-calc-module/
 ├── flake.nix          # Nix build configuration (~10 lines)
-├── module.yaml        # Module metadata and build settings (~20 lines)
+├── metadata.json      # Module metadata, build settings, and runtime config (~25 lines)
 ├── CMakeLists.txt     # CMake build file (~20 lines)
-├── metadata.json      # Runtime metadata (~10 lines)
 ├── lib/
 │   ├── libcalc.h      # C library header
 │   ├── libcalc.c      # C library source
@@ -190,65 +189,52 @@ logos-calc-module/
     └── calc_module_plugin.cpp    # Plugin implementation (wrapping logic)
 ```
 
-### 2.1 `module.yaml` — Module Configuration
+### 2.1 `metadata.json` — Module Configuration
 
-This is the central configuration file. It tells `logos-module-builder` what to build and how.
-
-```yaml
-name: calc_module
-version: 1.0.0
-type: core
-category: general
-description: "Calculator module wrapping libcalc C library"
-
-dependencies: []
-
-nix_packages:
-  build: []
-  runtime: []
-
-# This tells the builder that "libcalc" is a pre-built library in lib/
-external_libraries:
-  - name: calc
-    vendor_path: "lib"
-
-cmake:
-  find_packages: []
-  extra_sources: []
-  extra_include_dirs:
-    - lib
-  extra_link_libraries: []
-```
-
-**Key fields explained:**
-
-
-| Field                              | What it does                                                                                                                                                                                                                                                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                             | Module name — must be a valid C identifier (used in filenames, method calls)                                                                                                                                                                                                                                        |
-| `external_libraries[].name`        | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
-| `external_libraries[].vendor_path` | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root                                                                                                                                                                                                                        |
-| `cmake.extra_include_dirs`         | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"`                                                                                                                                                                                                                                     |
-
-
-### 2.2 `metadata.json` — Runtime Metadata
-
-This file is embedded into the plugin binary by Qt's `Q_PLUGIN_METADATA` macro:
+This is the single source of truth for your module. It is both embedded into the plugin binary by Qt's `Q_PLUGIN_METADATA` macro (for runtime metadata) and read by `logos-module-builder` to configure the Nix build (via the `nix` section).
 
 ```json
 {
   "name": "calc_module",
   "version": "1.0.0",
-  "description": "Calculator module wrapping libcalc C library",
-  "author": "",
   "type": "core",
   "category": "general",
+  "description": "Calculator module wrapping libcalc C library",
   "main": "calc_module_plugin",
-  "dependencies": []
+  "dependencies": [],
+
+  "nix": {
+    "packages": {
+      "build": [],
+      "runtime": []
+    },
+    "external_libraries": [
+      {
+        "name": "calc",
+        "vendor_path": "lib"
+      }
+    ],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": ["lib"],
+      "extra_link_libraries": []
+    }
+  }
 }
 ```
 
-### 2.3 `CMakeLists.txt` — Build File
+**Key fields explained:**
+
+
+| Field                                       | What it does                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                      | Module name — must be a valid C identifier (used in filenames, method calls)                                                                                                                                                                                                                                        |
+| `nix.external_libraries[].name`             | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
+| `nix.external_libraries[].vendor_path`      | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root                                                                                                                                                                                                                        |
+| `nix.cmake.extra_include_dirs`              | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"`                                                                                                                                                                                                                                     |
+
+### 2.2 `CMakeLists.txt` — Build File
 
 ```cmake
 cmake_minimum_required(VERSION 3.14)
@@ -277,7 +263,7 @@ logos_module(
 
 **How `EXTERNAL_LIBS calc` works:** The `logos_module()` CMake function searches `lib/` for `libcalc.so` (Linux) or `libcalc.dylib` (macOS), links it to your plugin, and sets up RPATH so the library is found at runtime.
 
-### 2.4 `flake.nix` — Nix Build Config
+### 2.3 `flake.nix` — Nix Build Config
 
 ```nix
 {
@@ -285,21 +271,20 @@ logos_module(
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    logos-nix.url = "github:logos-co/logos-nix";
-    nixpkgs.follows = "logos-nix/nixpkgs";
   };
 
-  outputs = { self, logos-module-builder, nixpkgs }:
+  outputs = inputs@{ logos-module-builder, ... }:
     logos-module-builder.lib.mkLogosModule {
       src = ./.;
-      configFile = ./module.yaml;
+      configFile = ./metadata.json;
+      flakeInputs = inputs;
     };
 }
 ```
 
-That's it — `mkLogosModule` handles all the Nix complexity (fetching Qt, the SDK, the code generator, setting up include paths, etc.).
+That's it — `mkLogosModule` handles all the Nix complexity (fetching Qt, the SDK, the code generator, setting up include paths, etc.). Note that `configFile` points to `metadata.json` (the single source of truth) and `flakeInputs = inputs` passes all flake inputs to the builder.
 
-### 2.5 `src/calc_module_interface.h` — Interface Declaration
+### 2.4 `src/calc_module_interface.h` — Interface Declaration
 
 This declares the methods your module exposes. It inherits from `PluginInterface` (provided by the Logos C++ SDK).
 
@@ -335,7 +320,7 @@ Q_DECLARE_INTERFACE(CalcModuleInterface, CalcModuleInterface_iid)
 - Supported parameter/return types: `int`, `bool`, `QString`, `QByteArray`, `QVariant`, `QJsonArray`, `QStringList`, `LogosResult`
 - The interface ID string (e.g., `"org.logos.CalcModuleInterface"`) must be unique across all modules
 
-### 2.6 `src/calc_module_plugin.h` — Plugin Header
+### 2.5 `src/calc_module_plugin.h` — Plugin Header
 
 This is the actual plugin class. It inherits from both `QObject` (for Qt's meta-object system) and your interface.
 
@@ -391,10 +376,10 @@ signals:
 - `Q_INTERFACES(CalcModuleInterface PluginInterface)` — registers both interfaces with Qt's plugin system
 - `initLogos` must be `Q_INVOKABLE` but **not** `override` — the base class `PluginInterface` does not declare it as virtual; the Logos host calls it reflectively via `QMetaObject::invokeMethod`
 - `eventResponse` signal is required for event forwarding between modules
-- `name()` must return the same string as the `name` field in `module.yaml` and `metadata.json`
+- `name()` must return the same string as the `name` field in `metadata.json`
 - **No `m_logosAPI` member variable** — the `LogosAPI`* pointer is stored in the global `logosAPI` variable defined in `liblogos`, not in a class member. See the `initLogos` implementation below.
 
-### 2.7 `src/calc_module_plugin.cpp` — Plugin Implementation
+### 2.6 `src/calc_module_plugin.cpp` — Plugin Implementation
 
 This is where the wrapping happens. Each method calls the corresponding C function.
 
@@ -844,8 +829,6 @@ Instead of pre-building the library and placing it in `lib/`, you can have Nix f
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    logos-nix.url = "github:logos-co/logos-nix";
-    nixpkgs.follows = "logos-nix/nixpkgs";
 
     # Fetch the library source (non-flake)
     libfoo-src = {
@@ -854,10 +837,11 @@ Instead of pre-building the library and placing it in `lib/`, you can have Nix f
     };
   };
 
-  outputs = { self, logos-module-builder, nixpkgs, libfoo-src }:
+  outputs = inputs@{ logos-module-builder, libfoo-src, ... }:
     logos-module-builder.lib.mkLogosModule {
       src = ./.;
-      configFile = ./module.yaml;
+      configFile = ./metadata.json;
+      flakeInputs = inputs;
 
       # Pass the fetched source to the builder
       externalLibInputs = {
@@ -867,26 +851,38 @@ Instead of pre-building the library and placing it in `lib/`, you can have Nix f
 }
 ```
 
-### module.yaml for flake input
+### metadata.json for flake input
 
-```yaml
-name: foo_module
-version: 1.0.0
-type: core
-description: "Module wrapping libfoo"
+```json
+{
+  "name": "foo_module",
+  "version": "1.0.0",
+  "type": "core",
+  "description": "Module wrapping libfoo",
+  "main": "foo_module_plugin",
+  "dependencies": [],
 
-external_libraries:
-  - name: foo
-    flake_input: "github:example/libfoo"
-    build_command: "make shared"
-    output_pattern: "build/libfoo.*"
-
-cmake:
-  extra_include_dirs:
-    - lib
+  "nix": {
+    "packages": { "build": [], "runtime": [] },
+    "external_libraries": [
+      {
+        "name": "foo",
+        "flake_input": "github:example/libfoo",
+        "build_command": "make shared",
+        "output_pattern": "build/libfoo.*"
+      }
+    ],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": ["lib"],
+      "extra_link_libraries": []
+    }
+  }
+}
 ```
 
-**Key difference:** The `externalLibInputs` key in flake.nix (`foo`) must match the `name` field in `external_libraries` (`foo`). The builder will:
+**Key difference:** The `externalLibInputs` key in flake.nix (`foo`) must match the `name` field in `nix.external_libraries` (`foo`). The builder will:
 
 1. Clone the source from the flake input
 2. Run `build_command` (`make shared`)
@@ -896,14 +892,21 @@ cmake:
 
 ### For Go libraries
 
-If the external library is written in Go with C bindings (`cgo`):
+If the external library is written in Go with C bindings (`cgo`), set `go_build: true` in the `nix.external_libraries` entry within `metadata.json`:
 
-```yaml
-external_libraries:
-  - name: mygolib
-    flake_input: "github:example/mygolib"
-    go_build: true
-    output_pattern: "libmygolib.*"
+```json
+{
+  "nix": {
+    "external_libraries": [
+      {
+        "name": "mygolib",
+        "flake_input": "github:example/mygolib",
+        "go_build": true,
+        "output_pattern": "libmygolib.*"
+      }
+    ]
+  }
+}
 ```
 
 Setting `go_build: true` enables the Go toolchain and sets `CGO_ENABLED=1`.
@@ -915,7 +918,7 @@ Setting `go_build: true` enables the Go toolchain and sets `CGO_ENABLED=1`.
 The [logos-libp2p-module](https://github.com/logos-co/logos-libp2p-module) is a production module that wraps the `nim-libp2p` library (compiled to a C shared library). Key files:
 
 - `**flake.nix**` — Uses `externalLibInputs` to fetch the nim-libp2p C bindings from a GitHub flake
-- `**module.yaml**` — Declares `nim_libp2p` as an external library with `go_build: false`
+- `**metadata.json**` — Declares `nim_libp2p` as an external library with `go_build: false` in the `nix` section
 - `**src/plugin.cpp**` — Wraps ~40 C functions (`libp2p_new`, `libp2p_start`, `libp2p_connect`, `libp2p_dial`, `libp2p_gossipsub_subscribe`, etc.) as `Q_INVOKABLE` methods
 - `**tests/**` — Qt test suite that exercises every wrapped function
 
