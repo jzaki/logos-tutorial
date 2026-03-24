@@ -579,7 +579,7 @@ void CalcUiCppPlugin::destroyWidget(QWidget* widget)
 
 ## Step 9: `flake.nix`
 
-Same pattern as Part 2 — `mkLogosModule` for the build, `apps` merged on top for `nix run`.
+Pass `standaloneApp` to `mkLogosModule` and you get `apps.default` (i.e. `nix run`) for free — no manual `apps` block required.
 
 **Important — `moduleInputs`:** Because `module.yaml` declares `dependencies: [calc_module]`, the build system runs `logos-cpp-generator` before compiling your C++ sources. The generator introspects `calc_module`'s built plugin to produce `logos_sdk.h` / `logos_sdk.cpp` (and per-module `calc_module_api.h` / `calc_module_api.cpp`). These are the files your backend includes as `#include "logos_sdk.h"`. For this to work, `calc_module` must be available as a built Nix package at code-generation time — that is what `moduleInputs` provides. Without it, the build fails with `'logos_sdk.h' file not found`.
 
@@ -589,44 +589,22 @@ Same pattern as Part 2 — `mkLogosModule` for the build, `apps` merged on top f
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
-    nixpkgs.follows = "logos-module-builder/nixpkgs";
-
     logos-standalone-app.url = "github:logos-co/logos-standalone-app";
-    logos-standalone-app.inputs.logos-liblogos.inputs.nixpkgs.follows =
-      "logos-module-builder/nixpkgs";
-
     calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";
   };
 
-  outputs = { self, logos-module-builder, logos-standalone-app, nixpkgs, calc_module }:
-    let
-      systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
-      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
-      moduleOutputs = logos-module-builder.lib.mkLogosModule {
-        src = ./.;
-        configFile = ./module.yaml;
-        moduleInputs = { inherit calc_module; };
-      };
-    in
-      moduleOutputs // {
-        apps = forAllSystems (system:
-          let
-            pkgs = import nixpkgs { inherit system; };
-            standalone = logos-standalone-app.packages.${system}.default;
-            plugin = moduleOutputs.packages.${system}.default;
-            pluginDir = pkgs.runCommand "calc-ui-cpp-plugin-dir" {} ''
-              mkdir -p $out
-              cp ${plugin}/lib/*_plugin.*  $out/
-              cp ${./metadata.json} $out/metadata.json
-            '';
-            run = pkgs.writeShellScript "run-calc-ui-cpp-standalone" ''
-              exec ${standalone}/bin/logos-standalone-app "${pluginDir}" "$@"
-            '';
-          in { default = { type = "app"; program = "${run}"; }; }
-        );
-      };
+  outputs = { logos-module-builder, logos-standalone-app, calc_module, ... }:
+    logos-module-builder.lib.mkLogosModule {
+      src = ./.;
+      configFile = ./module.yaml;
+      moduleInputs = { inherit calc_module; };
+      logosStandalone = logos-standalone-app;
+      iconFiles = [ ./icons/calc.png ];
+    };
 }
 ```
+
+`standaloneApp` tells `mkLogosModule` to wire up `apps.default` automatically. It stages the compiled plugin alongside `metadata.json` and any icon files into a Nix store directory, then produces a shell script that calls `logos-standalone-app` with that directory — exactly what `nix run` executes.
 
 ---
 
