@@ -632,7 +632,7 @@ For scripting and CI, use `--json`:
 ### 5.1 Build logoscore
 
 ```bash
-nix build 'github:logos-co/logos-liblogos' --out-link ./logos
+nix build 'github:logos-co/logos-logoscore-cli' --out-link ./logos
 ```
 
 ### 5.2 Set up the modules directory
