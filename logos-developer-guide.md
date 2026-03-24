@@ -91,7 +91,8 @@ The **Logos platform** is a modular application framework built in C++ on top of
 | **logos-module-builder** | [logos-co/logos-module-builder](https://github.com/logos-co/logos-module-builder) | Scaffolding and build system for new modules |
 | **logos-module** | [logos-co/logos-module](https://github.com/logos-co/logos-module) | Plugin loading/introspection library + `lm` CLI |
 | **logos-cpp-sdk** | [logos-co/logos-cpp-sdk](https://github.com/logos-co/logos-cpp-sdk) | C++ SDK, types, IPC layer, code generator |
-| **logos-liblogos** | [logos-co/logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core runtime (`logoscore`, `logos_host`, `liblogos_core`) |
+| **logos-liblogos** | [logos-co/logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core library (`logos_host`, `liblogos_core`) |
+| **logos-logoscore-cli** | [logos-co/logos-logoscore-cli](https://github.com/logos-co/logos-logoscore-cli) | Headless CLI runtime (`logoscore`) |
 | **logos-package** | [logos-co/logos-package](https://github.com/logos-co/logos-package) | LGX package format library + `lgx` CLI |
 | **logos-package-manager-module** | [logos-co/logos-package-manager-module](https://github.com/logos-co/logos-package-manager-module) | Package manager module + `lgpm` CLI |
 | **logos-basecamp** | [logos-co/logos-basecamp](https://github.com/logos-co/logos-basecamp) | Desktop application shell |
@@ -410,12 +411,12 @@ Example JSON output:
 
 ### 2.2 Running with `logoscore`
 
-The **`logoscore`** CLI (from `logos-liblogos`) is a headless runtime that can load modules and invoke their methods from the command line.
+The **`logoscore`** CLI (from `logos-logoscore-cli`) is a headless runtime that can load modules and invoke their methods from the command line.
 
 #### Building logoscore
 
 ```bash
-nix build 'github:logos-co/logos-liblogos' --out-link ./logos
+nix build 'github:logos-co/logos-logoscore-cli' --out-link ./logos
 ```
 
 #### Running a Module
@@ -1037,7 +1038,8 @@ When your module is installed via `lgpm`, its dependencies are automatically res
 | [logos-module-builder](https://github.com/logos-co/logos-module-builder) | Build system / scaffolding | `mkLogosModule` Nix function, `LogosModule.cmake`, templates |
 | [logos-module](https://github.com/logos-co/logos-module) | Plugin introspection | `liblogos_module.a` (static lib), `lm` (CLI) |
 | [logos-cpp-sdk](https://github.com/logos-co/logos-cpp-sdk) | SDK + code generator | `LogosAPI`, `LogosResult`, `logos-cpp-generator`, `PluginInterface` |
-| [logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core runtime | `logoscore` (CLI), `logos_host`, `liblogos_core` |
+| [logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core library | `logos_host`, `liblogos_core` |
+| [logos-logoscore-cli](https://github.com/logos-co/logos-logoscore-cli) | Headless CLI runtime | `logoscore` (CLI) |
 | [logos-package](https://github.com/logos-co/logos-package) | Package format | `lgx` (CLI), `liblgx` (library) |
 | [logos-package-manager-module](https://github.com/logos-co/logos-package-manager-module) | Package management | `lgpm` (CLI), `package_manager_plugin` |
 | [logos-basecamp](https://github.com/logos-co/logos-basecamp) | Desktop app shell | `LogosApp` (GUI), MDI workspace, plugin loader |
