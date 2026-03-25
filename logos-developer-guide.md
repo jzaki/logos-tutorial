@@ -10,7 +10,7 @@ A comprehensive guide to creating, building, testing, packaging, and distributin
 - [Part 1: Creating a Module](#part-1-creating-a-module)
   - [1.1 Scaffold with logos-module-builder](#11-scaffold-with-logos-module-builder)
   - [1.2 Project Structure](#12-project-structure)
-  - [1.3 The module.yaml Configuration](#13-the-moduleyaml-configuration)
+  - [1.3 The metadata.json Configuration](#13-the-metadatajson-configuration)
   - [1.4 Writing Module Code](#14-writing-module-code)
   - [1.5 Building Your Module](#15-building-your-module)
 - [Part 2: Inspecting and Testing Your Module](#part-2-inspecting-and-testing-your-module)
@@ -146,40 +146,44 @@ After scaffolding, your module directory looks like this:
 ```
 logos-my-module/
 ├── flake.nix              # Nix flake (build config, ~15 lines)
-├── module.yaml            # Declarative module configuration (~30 lines)
+├── metadata.json          # Single source of truth: module metadata + build config (~30 lines)
 ├── CMakeLists.txt         # CMake build file (~25 lines)
-├── metadata.json          # Auto-generated at build time from module.yaml
 └── src/
     ├── my_module_interface.h    # Qt interface definition
     ├── my_module_plugin.h       # Plugin header
     └── my_module_plugin.cpp     # Plugin implementation
 ```
 
-The key insight: **logos-module-builder** reduces ~600 lines of configuration across 5+ files down to ~70 lines across 2-3 files.
+The key insight: **logos-module-builder** reduces ~600 lines of configuration across 5+ files down to ~70 lines across 2-3 files. `metadata.json` serves as the single source of truth — it contains both the runtime metadata (embedded into the plugin binary by Qt) and the build configuration (read by the builder via the `nix` section).
 
-### 1.3 The module.yaml Configuration
+### 1.3 The metadata.json Configuration
 
-The `module.yaml` file is the central configuration for your module:
+The `metadata.json` file is the single source of truth for your module. It contains both the runtime metadata and the build configuration (read by `logos-module-builder` via the `nix` section).
 
-```yaml
-name: my_module
-version: 1.0.0
-type: core
-category: general
-description: "My first Logos module"
-dependencies: []
+```json
+{
+  "name": "my_module",
+  "version": "1.0.0",
+  "type": "core",
+  "category": "general",
+  "description": "My first Logos module",
+  "main": "my_module_plugin",
+  "dependencies": [],
 
-# Nix packages needed at build/runtime (optional)
-nix_packages:
-  build: []
-  runtime: []
-
-# CMake configuration (optional)
-cmake:
-  find_packages: []
-  extra_sources: []
-  extra_include_dirs: []
-  extra_link_libraries: []
+  "nix": {
+    "packages": {
+      "build": [],
+      "runtime": []
+    },
+    "external_libraries": [],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": [],
+      "extra_link_libraries": []
+    }
+  }
+}
 ```
 
 **Field reference:**
@@ -188,16 +192,18 @@ cmake:
 |-------|----------|---------|-------------|
 | `name` | Yes | -- | Module name (used for filenames and identifiers) |
 | `version` | No | `1.0.0` | Semantic version |
-| `type` | No | `core` | Module type |
+| `type` | No | `core` | Module type (`core`, `ui`, `ui_qml`) |
 | `category` | No | `general` | Category (general, network, chat, wallet, integration) |
 | `description` | No | `"A Logos module"` | Human-readable description |
+| `main` | Yes | -- | Plugin entry point (plugin name for core/ui, `Main.qml` for QML) |
 | `dependencies` | No | `[]` | Other Logos module names this depends on |
-| `nix_packages.build` | No | `[]` | Nix packages for build time |
-| `nix_packages.runtime` | No | `[]` | Nix packages for runtime |
-| `cmake.find_packages` | No | `[]` | CMake `find_package()` calls |
-| `cmake.extra_sources` | No | `[]` | Additional source files to compile |
-| `cmake.extra_include_dirs` | No | `[]` | Additional include directories |
-| `cmake.extra_link_libraries` | No | `[]` | Additional libraries to link |
+| `nix.packages.build` | No | `[]` | Nix packages for build time |
+| `nix.packages.runtime` | No | `[]` | Nix packages for runtime |
+| `nix.external_libraries` | No | `[]` | External C/C++ libraries to link |
+| `nix.cmake.find_packages` | No | `[]` | CMake `find_package()` calls |
+| `nix.cmake.extra_sources` | No | `[]` | Additional source files to compile |
+| `nix.cmake.extra_include_dirs` | No | `[]` | Additional include directories |
+| `nix.cmake.extra_link_libraries` | No | `[]` | Additional libraries to link |
 
 ### 1.4 Writing Module Code
 
@@ -303,7 +309,7 @@ int MyModulePlugin::compute(int a, int b)
 - Every `Q_INVOKABLE` method is discoverable and callable by other modules at runtime
 - `initLogos(LogosAPI*)` is called by the host when your module is loaded -- store the pointer for later use
 - The `eventResponse` signal is used for event forwarding between modules
-- `name()` must match the `name` field in your `module.yaml` / `metadata.json`
+- `name()` must match the `name` field in your `metadata.json`
 
 ### 1.5 Building Your Module
 
@@ -871,31 +877,60 @@ To create a module that wraps an external C/C++ library, use the external librar
 nix flake init -t github:logos-co/logos-module-builder#with-external-lib
 ```
 
-Then configure the external library in `module.yaml`:
+Then configure the external library in the `nix` section of `metadata.json`:
 
-```yaml
-name: my_wrapper_module
-version: 1.0.0
-description: "Wraps libfoo for Logos"
+```json
+{
+  "name": "my_wrapper_module",
+  "version": "1.0.0",
+  "description": "Wraps libfoo for Logos",
+  "main": "my_wrapper_module_plugin",
+  "dependencies": [],
 
-external_libraries:
-  - name: libfoo
-    flake_input: "github:example/libfoo"
-    output_pattern: "lib/libfoo.*"
+  "nix": {
+    "external_libraries": [
+      {
+        "name": "libfoo",
+        "flake_input": "github:example/libfoo",
+        "output_pattern": "lib/libfoo.*"
+      }
+    ]
+  }
+}
+```
 
-# Or for a vendored library:
-external_libraries:
-  - name: libfoo
-    vendor_path: "vendor/libfoo"
-    build_command: "make"
-    output_pattern: "build/lib/libfoo.*"
+For a vendored library, use `vendor_path` and `build_command`:
 
-# Or for a Go library:
-external_libraries:
-  - name: libfoo
-    vendor_path: "vendor/libfoo"
-    go_build: true
-    output_pattern: "libfoo.*"
+```json
+{
+  "nix": {
+    "external_libraries": [
+      {
+        "name": "libfoo",
+        "vendor_path": "vendor/libfoo",
+        "build_command": "make",
+        "output_pattern": "build/lib/libfoo.*"
+      }
+    ]
+  }
+}
+```
+
+For a Go library with C bindings:
+
+```json
+{
+  "nix": {
+    "external_libraries": [
+      {
+        "name": "libfoo",
+        "vendor_path": "vendor/libfoo",
+        "go_build": true,
+        "output_pattern": "libfoo.*"
+      }
+    ]
+  }
+}
 ```
 
 The builder handles downloading, building, and linking the external library into your module.
@@ -1009,16 +1044,7 @@ QML modules are sandboxed: no network access, no filesystem access outside the m
 
 ### 7.4 Module Dependencies
 
-Declare dependencies in your `module.yaml`:
-
-```yaml
-name: my_module
-dependencies:
-  - package_manager
-  - waku_module
-```
-
-Or in `metadata.json`:
+Declare dependencies in your `metadata.json`:
 
 ```json
 {
@@ -1026,6 +1052,8 @@ Or in `metadata.json`:
   "dependencies": ["package_manager", "waku_module"]
 }
 ```
+
+Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match the dependency name — e.g., `waku_module.url = "github:logos-co/logos-waku-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
 
 When your module is installed via `lgpm`, its dependencies are automatically resolved and installed first. When loaded via `logos-basecamp`, core module dependencies are loaded before your module.
 

@@ -910,11 +910,7 @@
     "root": {
       "inputs": {
         "logos-module-builder": "logos-module-builder",
-        "logos-standalone-app": "logos-standalone-app",
-        "nixpkgs": [
-          "logos-module-builder",
-          "nixpkgs"
-        ]
+        "logos-standalone-app": "logos-standalone-app"
       }
     }
   },

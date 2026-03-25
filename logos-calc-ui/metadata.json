@@ -1,10 +1,24 @@
 {
   "name": "calc_ui",
   "version": "1.0.0",
-  "description": "Calculator UI - QML frontend for the calc_module",
   "type": "ui_qml",
-  "main": "Main.qml",
-  "dependencies": ["calc_module"],
   "category": "tools",
-  "icon": "icons/calc.png"
+  "description": "Calculator UI - QML frontend for the calc_module",
+  "main": "Main.qml",
+  "icon": "icons/calc.png",
+  "dependencies": ["calc_module"],
+
+  "nix": {
+    "packages": {
+      "build": [],
+      "runtime": []
+    },
+    "external_libraries": [],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": [],
+      "extra_link_libraries": []
+    }
+  }
 }

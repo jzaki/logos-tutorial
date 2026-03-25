@@ -3,7 +3,7 @@
 
 #include <QObject>
 #include <QString>
-#include "logos_sdk.h"   // generated at build time from module.yaml dependencies
+#include "logos_sdk.h"   // generated at build time from metadata.json dependencies
 
 class LogosAPI;
 
