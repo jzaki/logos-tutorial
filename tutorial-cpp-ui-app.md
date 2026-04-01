@@ -48,7 +48,7 @@ The plugin implements `createWidget()` which returns a `QWidget*`. The widget is
 
 ```bash
 mkdir logos-calc-ui-cpp && cd logos-calc-ui-cpp
-nix flake init -t github:logos-co/logos-module-builder#ui-module
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-module
 git init && git add -A
 ```
 
@@ -110,12 +110,11 @@ Create the icon directory and add a placeholder icon. The icon is displayed in t
 
 ```bash
 mkdir -p icons
-# Copy any PNG here — or use a placeholder:
-convert -size 64x64 xc:'#4a90d9' icons/calc.png 2>/dev/null \
-  || printf '\x89PNG\r\n\x1a\n' > icons/calc.png
+# Copy any PNG here — or generate a 64×64 placeholder:
+echo "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAeklEQVR4nO3PUQkAIBTAwFfPdtazjSH8OITBAtxm7fN1wwUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWPHYBic8hlloAWpEAAAAASUVORK5CYII=" | base64 -d > icons/calc.png
 ```
 
-> **Naming convention:** Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match — e.g., `calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
+> **Naming convention:** Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match — e.g., `calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
 
 ---
 
@@ -594,8 +593,8 @@ Since `metadata.json` declares `"type": "ui"`, `mkLogosModule` automatically wir
   description = "Calculator C++ UI plugin for Logos - widget frontend for calc_module";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
-    calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
   };
 
   outputs = inputs@{ logos-module-builder, calc_module, ... }:
@@ -623,8 +622,13 @@ nix build --override-input calc_module path:../logos-calc-module
 Inspect the output with `lm` (the module inspector from `logos-module`):
 
 ```bash
-nix build 'github:logos-co/logos-module#cli' --out-link ./lm-cli
-./lm-cli/bin/lm ./result/lib/calc_ui_cpp_plugin.dylib
+nix build 'github:logos-co/logos-module/337223f2a72710d8052ca750510cd25d33e05047#lm' --out-link ./lm-cli
+
+# Linux
+./lm-cli/bin/lm ./result/lib/calc_ui_cpp_plugin.so
+
+# macOS
+# ./lm-cli/bin/lm ./result/lib/calc_ui_cpp_plugin.dylib
 ```
 
 You should see `createWidget` and `destroyWidget` in the methods list.
@@ -644,7 +648,7 @@ The widget opens. No backend connected yet, so button clicks will silently retur
 The `capability_module` is loaded automatically by the standalone app. You only need to install `calc_module`:
 
 ```bash
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 mkdir -p modules
 
 # Bundle and install calc_module (from Part 1)
@@ -665,11 +669,13 @@ nix run . --override-input calc_module path:../logos-calc-module -- --modules-di
 ```bash
 # Package calc_module (from Part 1)
 cd ../logos-calc-module
-nix build '.#lgx-dual'
+nix build '.#lgx'
+nix build '.#lgx-portable'
 
 # Package the C++ UI plugin
 cd ../logos-calc-ui-cpp
-nix build '.#lgx-dual'
+nix build '.#lgx'
+nix build '.#lgx-portable'
 ```
 
 > For more bundling options (standalone bundler syntax, cross-platform packaging), see the [Developer Guide — Bundling with nix-bundle-lgx](logos-developer-guide.md#32-bundling-with-nix-bundle-lgx).
@@ -682,7 +688,7 @@ Build logos-basecamp, launch it once to preinstall its bundled modules, then ins
 
 ```bash
 # Build logos-basecamp
-nix build 'github:logos-co/logos-basecamp' -o basecamp-result
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe' -o basecamp-result
 
 # Launch once to preinstall bundled modules, then close it
 ./basecamp-result/bin/logos-basecamp
@@ -704,7 +710,7 @@ Install your modules using `lgpm` (substitute `BASECAMP_DIR` with the actual pat
 
 ```bash
 # Build lgpm CLI
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 
 # Install core module
 ./pm/bin/lgpm --modules-dir BASECAMP_DIR/modules \

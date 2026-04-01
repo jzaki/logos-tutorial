@@ -131,16 +131,16 @@ The fastest way to create a new module is using the **logos-module-builder** tem
 mkdir logos-my-module && cd logos-my-module
 
 # Scaffold a minimal core module (no external dependencies)
-nix flake init -t github:logos-co/logos-module-builder
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b
 
 # Or scaffold a module that wraps an external C/C++ library
-nix flake init -t github:logos-co/logos-module-builder#with-external-lib
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#with-external-lib
 
 # For UI modules (C++ Qt widget with logos-standalone-app runner)
-nix flake init -t github:logos-co/logos-module-builder#ui-module
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-module
 
 # For QML UI modules (with logos-standalone-app runner)
-nix flake init -t github:logos-co/logos-module-builder#ui-qml-module
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-qml-module
 ```
 
 **Available templates:**
@@ -296,7 +296,7 @@ The **`lm`** tool (from `logos-module`) lets you inspect compiled module binarie
 #### Building lm
 
 ```bash
-nix build 'github:logos-co/logos-module#lm' --out-link ./lm
+nix build 'github:logos-co/logos-module/337223f2a72710d8052ca750510cd25d33e05047#lm' --out-link ./lm
 ```
 
 #### Viewing Metadata
@@ -363,7 +363,7 @@ The **logos-module-viewer** is a graphical tool for inspecting loaded modules.
 
 ```bash
 # Build the viewer
-nix build 'github:logos-co/logos-module-viewer#app' --out-link ./logos-viewer
+nix build 'github:logos-co/logos-module-viewer/b6489c1aab8c1590fa127dbaedb39708f3614fbc#app' --out-link ./logos-viewer
 
 # Run it with your module
 ./logos-viewer/bin/logos-module-viewer -m ./result/lib/my_module_plugin.so
@@ -412,18 +412,16 @@ nix build .#lgx
 # Portable variant (self-contained, all dependencies bundled)
 nix build .#lgx-portable
 
-# Dual variant (both dev and portable in one .lgx file)
-nix build .#lgx-dual
 ```
 
 This produces a `my_module-<version>.lgx` file in the `result/` directory.
 
-This works because `logos-module-builder` includes `nix-bundle-lgx` as its own dependency and `mkLogosModule` automatically creates the `lgx`, `lgx-portable`, and `lgx-dual` package outputs. No extra configuration is needed — it is part of the standard module template:
+This works because `logos-module-builder` includes `nix-bundle-lgx` as its own dependency and `mkLogosModule` automatically creates the `lgx` and `lgx-portable` package outputs. No extra configuration is needed — it is part of the standard module template:
 
 ```nix
 {
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -437,17 +435,17 @@ This works because `logos-module-builder` includes `nix-bundle-lgx` as its own d
 
 #### Using `nix bundle` (Alternative)
 
-You can also create `.lgx` packages using the `nix bundle` command directly. This is useful if your module does not use `logos-module-builder` or if you need the `dual` bundling mode (both dev and portable in a single `.lgx` file):
+You can also create `.lgx` packages using the `nix bundle` command directly. This is useful if your module does not use `logos-module-builder`, or if you need the `dual` bundling mode (both dev and portable in a single `.lgx` file) which is only available via the `nix bundle` command:
 
 ```bash
 # Dev variant
-nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78 .#lib
 
 # Portable variant
-nix bundle --bundler github:logos-co/nix-bundle-lgx#portable .#lib
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78#portable .#lib
 
 # Dual variant (both dev and portable in one .lgx file)
-nix bundle --bundler github:logos-co/nix-bundle-lgx#dual .#lib
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78#dual .#lib
 ```
 
 This produces a `my_module-<version>.lgx` file in the current directory.
@@ -458,7 +456,7 @@ This produces a `my_module-<version>.lgx` file in the current directory.
 |------|-----------------|---------------------|----------------|----------|
 | **Dev** | `nix build .#lgx` | `nix bundle --bundler ...#default .#lib` | `darwin-arm64-dev` | Local development (requires Nix store) |
 | **Portable** | `nix build .#lgx-portable` | `nix bundle --bundler ...#portable .#lib` | `darwin-arm64` | Distribution (self-contained, no Nix needed) |
-| **Dual** | `nix build .#lgx-dual` | `nix bundle --bundler ...#dual .#lib` | Both dev and portable | One package for both environments |
+| **Dual** | *(not available as built-in)* | `nix bundle --bundler ...#dual .#lib` | Both dev and portable | One package for both environments |
 
 **Variant naming:**
 
@@ -482,38 +480,25 @@ The **`lgpm`** CLI (Logos Package Manager) installs, searches, and manages modul
 #### Building lgpm
 
 ```bash
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./package-manager
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./package-manager
 ```
 
 #### Commands
 
+`lgpm` manages **locally-available** `.lgx` packages. It does not download packages from the network — use `lgpd` (logos-package-downloader) for that.
+
 ```bash
-# Search for packages
-./package-manager/bin/lgpm search waku
-
-# List all available packages
-./package-manager/bin/lgpm list
-
-# List only installed packages
-./package-manager/bin/lgpm list --installed
-
-# List packages in a category
-./package-manager/bin/lgpm list --category networking
-
-# Show package details
-./package-manager/bin/lgpm info my_module
-
-# List available categories
-./package-manager/bin/lgpm categories
-
-# Install a package (with dependency resolution)
-./package-manager/bin/lgpm --modules-dir ./modules install my_module
-
-# Install multiple packages
-./package-manager/bin/lgpm --modules-dir ./modules install my_module another_module
-
 # Install from a local .lgx file
 ./package-manager/bin/lgpm --modules-dir ./modules install --file ./my_module.lgx
+
+# Install all .lgx files in a directory
+./package-manager/bin/lgpm --modules-dir ./modules install --dir ./packages/
+
+# List installed packages
+./package-manager/bin/lgpm --modules-dir ./modules list
+
+# Show installed package details
+./package-manager/bin/lgpm --modules-dir ./modules info my_module
 ```
 
 #### Global Options
@@ -522,7 +507,6 @@ nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./packag
 |--------|-------------|
 | `--modules-dir <path>` | Target directory for installed core modules |
 | `--ui-plugins-dir <path>` | Target directory for UI plugins |
-| `--release <tag>` | GitHub release tag to use (default: `latest`) |
 | `--json` | Output in JSON format |
 | `-h, --help` | Show help |
 
@@ -543,21 +527,31 @@ modules/
     └── variant
 ```
 
-### 4.3 Installing from a Registry
+### 4.3 Downloading and Installing from a Registry
+
+To download packages from the online catalog and then install them locally, use `lgpd` (logos-package-downloader) followed by `lgpm`:
 
 ```bash
-# Install a published package (lgpm fetches from GitHub Releases)
-./package-manager/bin/lgpm --modules-dir ./modules install my_module
+# Build lgpd
+nix build 'github:logos-co/logos-package-downloader/fb3b8c48fed5323ea6a4f4195462dc8d84d1e77f#cli' --out-link ./downloader
 
-# Install from a specific release
-./package-manager/bin/lgpm --modules-dir ./modules --release v2.0.0 install my_module
+# Search for packages
+./downloader/bin/lgpd search waku
+
+# List all available packages
+./downloader/bin/lgpd list
+
+# Download a package
+./downloader/bin/lgpd download my_module -o ./packages/
+
+# Download from a specific release
+./downloader/bin/lgpd --release v2.0.0 download my_module -o ./packages/
+
+# Install the downloaded package locally
+./package-manager/bin/lgpm --modules-dir ./modules install --file ./packages/my_module.lgx
 ```
 
-The package manager automatically:
-1. Resolves transitive dependencies
-2. Downloads the correct platform variant for your OS/architecture
-3. Extracts the LGX package
-4. Copies the library to the target directory
+`lgpd` handles the network side (browsing, searching, downloading), while `lgpm` handles local installation.
 
 ---
 
@@ -572,7 +566,7 @@ The **`logoscore`** CLI (from `logos-liblogos`) is a headless runtime that can l
 #### Building logoscore
 
 ```bash
-nix build 'github:logos-co/logos-logoscore-cli' --out-link ./logos
+nix build 'github:logos-co/logos-logoscore-cli/ce3884cce83f0706916c1af2a44f0775386c0ec4' --out-link ./logos
 ```
 
 #### Daemon Mode
@@ -674,18 +668,18 @@ logos-basecamp produces two binary variants:
 
 ```bash
 # Build the development version
-nix build 'github:logos-co/logos-basecamp#app' --out-link ./logos-basecamp
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#app' --out-link ./logos-basecamp
 
 # Run the dev binary
 ./logos-basecamp/bin/logos-basecamp
 
 # Build the portable/distributed version
-nix build 'github:logos-co/logos-basecamp#portable' --out-link ./logos-basecamp-portable
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#portable' --out-link ./logos-basecamp-portable
 
 # Or build platform-specific distributions:
-nix build 'github:logos-co/logos-basecamp#bin-bundle-dir'     # Flat directory bundle
-nix build 'github:logos-co/logos-basecamp#bin-appimage'       # Linux AppImage
-nix build 'github:logos-co/logos-basecamp#bin-macos-app'      # macOS .app bundle
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#bin-bundle-dir'     # Flat directory bundle
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#bin-appimage'       # Linux AppImage
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#bin-macos-app'      # macOS .app bundle
 ```
 
 > **Note:** When installing modules into logos-basecamp, the LGX variant type must match the build type. Dev builds of basecamp expect **dev** LGX variants (e.g., `darwin-arm64-dev`), while portable builds expect **portable** variants (e.g., `darwin-arm64`). Use the `dual` bundler (see [3.2](#32-bundling-with-nix-bundle-lgx)) to produce packages that work with both.
@@ -780,7 +774,7 @@ The generator is bundled with `logos-cpp-sdk`. It is automatically available:
 - **In `nix develop`** -- the module dev shell includes the SDK on PATH
 - **Build it directly:**
   ```bash
-  nix build 'github:logos-co/logos-cpp-sdk#cpp-generator' --out-link ./cpp-gen
+  nix build 'github:logos-co/logos-cpp-sdk/d633575677a3d19a8bf1d5ff687398dace532938#cpp-generator' --out-link ./cpp-gen
   ./cpp-gen/bin/logos-cpp-generator --help
   ```
 
@@ -984,12 +978,11 @@ logos-cpp-generator --metadata <metadata.json> --general-only [--output-dir <dir
 # Preferred: built-in derivation (logos-module-builder includes nix-bundle-lgx)
 nix build .#lgx                                                       # Dev variant
 nix build .#lgx-portable                                              # Portable variant
-nix build .#lgx-dual                                                  # Both variants
 
 # Alternative: nix bundle command
-nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib            # Dev variant
-nix bundle --bundler github:logos-co/nix-bundle-lgx#portable .#lib   # Portable variant
-nix bundle --bundler github:logos-co/nix-bundle-lgx#dual .#lib       # Both variants
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78 .#lib            # Dev variant
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78#portable .#lib   # Portable variant
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78#dual .#lib       # Both variants
 ```
 
 ---
@@ -1066,8 +1059,8 @@ When running a UI module with `nix run`, the standalone app automatically bundle
 3. **Each dependency must have a matching flake input** — the flake input name must exactly match the dependency name in `metadata.json`:
    ```nix
    inputs = {
-     logos-module-builder.url = "github:logos-co/logos-module-builder";
-     calc_module.url = "github:logos-co/logos-calc-module";
+     logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+     calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
      storage_module.url = "github:logos-co/logos-storage-module";
    };
    ```
@@ -1086,8 +1079,8 @@ When running a UI module with `nix run`, the standalone app automatically bundle
 {
   description = "My UI module";
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
-    calc_module.url = "github:logos-co/logos-calc-module";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
   };
   outputs = inputs@{ logos-module-builder, ... }:
     logos-module-builder.lib.mkLogosModule {
@@ -1103,8 +1096,8 @@ When running a UI module with `nix run`, the standalone app automatically bundle
 {
   description = "My QML UI module";
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
-    calc_module.url = "github:logos-co/logos-calc-module";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
   };
   outputs = inputs@{ logos-module-builder, ... }:
     logos-module-builder.lib.mkLogosQmlModule {
@@ -1134,7 +1127,7 @@ If a module installs but fails to load, the variant type may not match:
 
 - **Dev build** of logos-basecamp needs **dev** LGX variants (`darwin-arm64-dev`)
 - **Portable build** needs **portable** variants (`darwin-arm64`)
-- Use `nix build .#lgx` and `nix build .#lgx-portable` to produce each variant separately, `nix build .#lgx-dual` for a single package with both, or `nix bundle --bundler github:logos-co/nix-bundle-lgx#dual .#lib` via the standalone bundler
+- Use `nix build .#lgx` and `nix build .#lgx-portable` to produce each variant separately, or `nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78#dual .#lib` for a single package with both variants
 
 ### Cross-platform builds
 
@@ -1145,7 +1138,7 @@ Build on each target platform separately to create `.lgx` packages:
 nix build .#lgx-portable
 
 # Or using nix bundle for dual variant:
-nix bundle --bundler github:logos-co/nix-bundle-lgx#dual .#lib
+nix bundle --bundler github:logos-co/nix-bundle-lgx/9d6f9016c865b9d2793672bc3c45a50b59753c78#dual .#lib
 
 # Then merge platform-specific .lgx files into one:
 ./lgx/bin/lgx merge my_module-linux.lgx my_module-macos.lgx -o my_module.lgx

@@ -48,7 +48,7 @@ Use the QML module template from `logos-module-builder`:
 
 ```bash
 mkdir logos-calc-ui && cd logos-calc-ui
-nix flake init -t github:logos-co/logos-module-builder#ui-qml-module
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-qml-module
 git init && git add -A
 ```
 
@@ -65,7 +65,7 @@ logos-calc-ui/
 
 ## Step 2: Update `metadata.json`
 
-Replace the template contents with your plugin's details:
+Replace the template contents with your plugin's details. The template may generate an extra `nix` section — keep it as-is, it's used by the builder:
 
 ```json
 {
@@ -76,13 +76,27 @@ Replace the template contents with your plugin's details:
   "main": "Main.qml",
   "dependencies": ["calc_module"],
   "category": "tools",
-  "icon": "icons/calc.png"
+  "icon": "icons/calc.png",
+
+  "nix": {
+    "packages": {
+      "build": [],
+      "runtime": []
+    },
+    "external_libraries": [],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": [],
+      "extra_link_libraries": []
+    }
+  }
 }
 ```
 
 The `dependencies` field tells the host to load `calc_module` before showing your UI.
 
-> **Naming convention:** Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match the dependency name — e.g., `calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
+> **Naming convention:** Each entry in `dependencies` must match the `name` field in that module's own `metadata.json`. When adding a dependency as a flake input, the **input attribute name** must also match the dependency name — e.g., `calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module"`. The URL can point to any repo, but the attribute name is how the builder resolves dependencies.
 
 ---
 
@@ -231,8 +245,8 @@ The template already has everything wired up. Update the description and add `ca
   description = "Calculator QML UI Plugin for Logos - frontend for calc_module";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
-    calc_module.url = "github:logos-co/logos-tutorial?dir=logos-calc-module";  # must match dependency name in metadata.json
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";  # must match dependency name in metadata.json
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -264,7 +278,7 @@ The app opens immediately. No modules are loaded, so clicking buttons shows "Log
 To test actual calls to `calc_module`, you need a modules directory with `calc_module` installed via `lgpm`. The `capability_module` is loaded automatically by the standalone app. Do this once:
 
 ```bash
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 mkdir -p modules
 
 # Bundle and install calc_module (from Part 1)
@@ -329,16 +343,18 @@ Available theme tokens via `Theme.palette`:
 
 ### 7.1 Bundle as LGX packages
 
-Create `.lgx` packages using the dual variant (includes both dev and portable variants, so they work with any basecamp build):
+Create `.lgx` packages for both dev and portable variants:
 
 ```bash
 # Package calc_module (from Part 1)
 cd ../logos-calc-module
-nix build '.#lgx-dual'
+nix build '.#lgx'
+nix build '.#lgx-portable'
 
 # Package the QML UI plugin
 cd ../logos-calc-ui
-nix build '.#lgx-dual'
+nix build '.#lgx'
+nix build '.#lgx-portable'
 ```
 
 > For more bundling options (standalone bundler syntax, cross-platform packaging), see the [Developer Guide — Bundling with nix-bundle-lgx](logos-developer-guide.md#32-bundling-with-nix-bundle-lgx).
@@ -351,7 +367,7 @@ Build logos-basecamp, launch it once to preinstall its bundled modules, then ins
 
 ```bash
 # Build logos-basecamp
-nix build 'github:logos-co/logos-basecamp' -o basecamp-result
+nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe' -o basecamp-result
 
 # Launch once to preinstall bundled modules, then close it
 ./basecamp-result/bin/logos-basecamp
@@ -373,7 +389,7 @@ Install your modules using `lgpm` (substitute `BASECAMP_DIR` with the actual pat
 
 ```bash
 # Build lgpm CLI
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 
 # Install core module
 ./pm/bin/lgpm --modules-dir BASECAMP_DIR/modules \
@@ -404,7 +420,7 @@ The "Calculator UI" tab appears in the sidebar. Clicking it loads your `Main.qml
 For rapid iteration on QML without rebuilding, set `QML_PATH` to your QML source directory:
 
 ```bash
-QML_PATH=$PWD/src/qml nix run .
+QML_PATH=$PWD nix run .
 ```
 
 Edit `Main.qml`, close and re-run — changes appear immediately without `nix build`. When `QML_PATH` is set, the plugin loads QML files from the filesystem instead of from Qt resources, so your edits are picked up on each launch.
