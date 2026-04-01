@@ -32,10 +32,10 @@ Before writing any C code, scaffold the Logos module project using the official 
 ```bash
 # For a module that wraps an external C library:
 mkdir logos-calc-module && cd logos-calc-module
-nix flake init -t github:logos-co/logos-module-builder#with-external-lib
+nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#with-external-lib
 
 # Or for a plain module (no external library):
-# nix flake init -t github:logos-co/logos-module-builder
+# nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b
 ```
 
 This generates the skeleton files (`flake.nix`, `metadata.json`, `CMakeLists.txt`, etc.) pre-configured for the logos-module-builder. You then customize them for your specific library.
@@ -295,7 +295,7 @@ The `if/elseif/else` block above it is boilerplate — don't change it.
   description = "Calculator module - wraps libcalc C library for Logos";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -542,7 +542,7 @@ Both library files are placed together so the plugin can find the C library at r
 The `lm` CLI tool (from `logos-module`) inspects compiled module binaries:
 
 ```bash
-nix build 'github:logos-co/logos-module#lm' --out-link ./lm
+nix build 'github:logos-co/logos-module/337223f2a72710d8052ca750510cd25d33e05047#lm' --out-link ./lm
 ```
 
 ### 4.2 View metadata
@@ -650,7 +650,7 @@ For scripting and CI, use `--json`:
 ### 5.1 Build logoscore
 
 ```bash
-nix build 'github:logos-co/logos-logoscore-cli' --out-link ./logos
+nix build 'github:logos-co/logos-logoscore-cli/ce3884cce83f0706916c1af2a44f0775386c0ec4' --out-link ./logos
 ```
 
 ### 5.2 Set up the modules directory
@@ -662,7 +662,7 @@ nix build 'github:logos-co/logos-logoscore-cli' --out-link ./logos
 nix build '.#lgx'
 
 # Install it into a modules directory using the Logos Package Manager
-nix build 'github:logos-co/logos-package-manager#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 mkdir -p modules
 ./pm/bin/lgpm --modules-dir ./modules install --file result/*.lgx
 ```
@@ -736,10 +736,11 @@ nix build '.#lgx-portable'
 
 Portable LGX packages are fully self-contained with no `/nix/store` references at runtime. These are the packages used by the Logos App Package Manager UI and published to [logos-modules](https://github.com/logos-co/logos-modules) releases.
 
-To create a **dual** package containing both dev and portable variants (works with any basecamp build):
+To create both dev and portable variants (the dev variant works with local `nix build` of basecamp; the portable variant works with standalone basecamp builds):
 
 ```bash
-nix build '.#lgx-dual'
+nix build '.#lgx'
+nix build '.#lgx-portable'
 ```
 
 > For more bundling options (standalone bundler syntax, cross-platform packaging), see the [Developer Guide — Bundling with nix-bundle-lgx](logos-developer-guide.md#32-bundling-with-nix-bundle-lgx).
@@ -747,7 +748,7 @@ nix build '.#lgx-dual'
 To install a portable package on another machine:
 
 ```bash
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 ./pm/bin/lgpm --modules-dir ./modules install --file calc_module.lgx
 ```
 
@@ -862,7 +863,7 @@ Instead of pre-building the library and placing it in `lib/`, you can have Nix f
   description = "Module wrapping libfoo from GitHub";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
 
     # Fetch the library source (non-flake)
     libfoo-src = {
