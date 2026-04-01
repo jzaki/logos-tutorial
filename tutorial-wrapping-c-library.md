@@ -45,7 +45,7 @@ This generates the skeleton files (`flake.nix`, `metadata.json`, `CMakeLists.txt
 ### 1.2 Create the lib directory
 
 ```bash
-mkdir -p lib 
+mkdir -p lib
 ```
 
 ### 1.3 Write the C header
@@ -174,11 +174,11 @@ T calc_version
 
 The template from Step 1.1 generated skeleton files with placeholder names (`external_lib`, `example_lib`). Now rename and customize them for your library. You need to edit **every generated file**:
 
-| File | What to change |
-|------|---------------|
-| `metadata.json` | Module name, description, library name, include dirs |
-| `CMakeLists.txt` | Project name, module name, source filenames, library name |
-| `flake.nix` | Description (and dependency inputs if needed) |
+| File                   | What to change                                                    |
+| ---------------------- | ----------------------------------------------------------------- |
+| `metadata.json`        | Module name, description, library name, include dirs              |
+| `CMakeLists.txt`       | Project name, module name, source filenames, library name         |
+| `flake.nix`            | Description (and dependency inputs if needed)                     |
 | `src/*.h`, `src/*.cpp` | Rename files, replace class/method names, add your wrapping logic |
 
 After renaming and editing, your project should look like this:
@@ -237,13 +237,12 @@ This is the single source of truth for your module. It is embedded into the plug
 
 **Key fields explained:**
 
-
-| Field                                       | What it does                                                                                                                                                                                                                                                                                                        |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                                      | Module name — must be a valid C identifier (used in filenames, method calls)                                                                                                                                                                                                                                        |
-| `nix.external_libraries[].name`             | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
-| `nix.external_libraries[].vendor_path`      | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root                                                                                                                                                                                                                        |
-| `nix.cmake.extra_include_dirs`              | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"`                                                                                                                                                                                                                                     |
+| Field                                  | What it does                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                 | Module name — must be a valid C identifier (used in filenames, method calls)                                                                                                                                                                                                                                        |
+| `nix.external_libraries[].name`        | Library name **without the `lib` prefix** — the builder looks for `lib<name>.so` / `lib<name>.dylib` in the directory specified by `vendor_path`. So `name: calc` matches the file `libcalc.so` / `libcalc.dylib`. This follows the standard Unix library naming convention where `-lcalc` links against `libcalc`. |
+| `nix.external_libraries[].vendor_path` | Where to find the pre-built library. `"lib"` means the `lib/` directory in your project root                                                                                                                                                                                                                        |
+| `nix.cmake.extra_include_dirs`         | Added to the CMake include path so your C++ code can `#include "lib/libcalc.h"`                                                                                                                                                                                                                                     |
 
 ### 2.2 `CMakeLists.txt` — Build File
 
@@ -409,7 +408,7 @@ signals:
 - `initLogos` must be `Q_INVOKABLE` but **not** `override` — the base class `PluginInterface` does not declare it as virtual; the Logos host calls it reflectively via `QMetaObject::invokeMethod`
 - `eventResponse` signal is required for event forwarding between modules
 - `name()` must return the same string as the `name` field in `metadata.json`
-- **No `m_logosAPI` member variable** — the `LogosAPI`* pointer is stored in the global `logosAPI` variable defined in `liblogos`, not in a class member. See the `initLogos` implementation below.
+- **No `m_logosAPI` member variable** — the `LogosAPI`\* pointer is stored in the global `logosAPI` variable defined in `liblogos`, not in a class member. See the `initLogos` implementation below.
 
 ### 2.6 `src/calc_module_plugin.cpp` — Plugin Implementation
 
@@ -483,7 +482,7 @@ QString CalcModulePlugin::libVersion()
 **The wrapping pattern** is always the same:
 
 1. Call the C function with the arguments
-2. Convert the C result to a Qt type if needed (e.g., `const char`* → `QString`)
+2. Convert the C result to a Qt type if needed (e.g., `const char`\* → `QString`)
 3. Return the Qt type
 
 ---
@@ -663,7 +662,7 @@ nix build 'github:logos-co/logos-logoscore-cli' --out-link ./logos
 nix build '.#lgx'
 
 # Install it into a modules directory using the Logos Package Manager
-nix build 'github:logos-co/logos-package-manager-module#cli' --out-link ./pm
+nix build 'github:logos-co/logos-package-manager#cli' --out-link ./pm
 mkdir -p modules
 ./pm/bin/lgpm --modules-dir ./modules install --file result/*.lgx
 ```
@@ -701,7 +700,7 @@ Start the daemon and call methods:
 
 > For inline (legacy) mode and other logoscore options, see the [Developer Guide -- Running with logoscore](logos-developer-guide.md#51-running-with-logoscore).
 
-  **What happens under the hood:**
+**What happens under the hood:**
 
 1. `logoscore` scans `./modules/` for subdirectories containing `manifest.json`
 2. It finds `calc_module` and extracts metadata from the plugin binary
@@ -842,7 +841,6 @@ Q_INVOKABLE QString getData() {
 
 ### String conversion reference
 
-
 | C type                 | Qt type           | C → Qt                     | Qt → C                     |
 | ---------------------- | ----------------- | -------------------------- | -------------------------- |
 | `const char*`          | `QString`         | `QString::fromUtf8(c_str)` | `str.toUtf8().constData()` |
@@ -850,7 +848,6 @@ Q_INVOKABLE QString getData() {
 | `int`                  | `int`             | direct                     | direct                     |
 | `bool` / `int`         | `bool`            | `result != 0`              | direct                     |
 | `void*`                | (store in member) | —                          | —                          |
-
 
 ---
 
@@ -1034,4 +1031,3 @@ If you get "undefined symbol" errors for your C library functions:
 1. Verify the `.so`/`.dylib` is in `lib/` before building
 2. Verify the header has `extern "C"` guards
 3. Check the symbols are exported: `nm -D lib/libcalc.so | grep calc`
-
