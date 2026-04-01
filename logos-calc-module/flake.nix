@@ -2,7 +2,7 @@
   description = "Calculator module - wraps libcalc C library for Logos";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/tutorial-v1";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
