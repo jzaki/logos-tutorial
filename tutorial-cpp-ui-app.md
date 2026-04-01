@@ -48,9 +48,11 @@ The plugin implements `createWidget()` which returns a `QWidget*`. The widget is
 
 ```bash
 mkdir logos-calc-ui-cpp && cd logos-calc-ui-cpp
-nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-module
+nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95#ui-module
 git init && git add -A
 ```
+
+> **Note:** The generated `flake.nix` uses an unpinned `logos-module-builder` URL. Replace it with the pinned version shown in [Step 9](#step-9-flakenix) to ensure reproducible builds.
 
 This gives you:
 
@@ -138,6 +140,8 @@ logos_module(
         src/calc_ui_cpp_plugin.cpp
         src/calc_backend.h
         src/calc_backend.cpp
+    INCLUDE_DIRS
+        ${CMAKE_CURRENT_SOURCE_DIR}/interfaces
 )
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
@@ -170,11 +174,36 @@ Q_DECLARE_INTERFACE(CalcUiCppInterface, CalcUiCppInterface_iid)
 #endif // CALC_UI_CPP_INTERFACE_H
 ```
 
+The template also scaffolds `interfaces/IComponent.h` — the widget interface that `logos-basecamp` uses to load C++ UI plugins. You don't need to modify this file:
+
+```cpp
+// interfaces/IComponent.h (scaffolded by the template — do not modify)
+#pragma once
+
+#include <QObject>
+#include <QWidget>
+#include <QtPlugin>
+
+class LogosAPI;
+
+class IComponent {
+public:
+    virtual ~IComponent() = default;
+    virtual QWidget* createWidget(LogosAPI* logosAPI = nullptr) = 0;
+    virtual void destroyWidget(QWidget* widget) = 0;
+};
+
+#define IComponent_iid "com.logos.component.IComponent"
+Q_DECLARE_INTERFACE(IComponent, IComponent_iid)
+```
+
 ---
 
 ## Step 5: Plugin Header (`src/calc_ui_cpp_plugin.h`)
 
-Replace the scaffolded plugin header. This header is the same for both Option A and Option B — only the `.cpp` implementation differs:
+Replace the scaffolded plugin header. This header is the same for both Option A and Option B — only the `.cpp` implementation differs.
+
+> **Key difference from core modules:** C++ UI plugins must inherit from `IComponent` (from `interfaces/IComponent.h`, scaffolded by the template) and use `IComponent_iid` as the plugin metadata IID. This is how `logos-basecamp` identifies and loads widget-based UI plugins. Without `IComponent`, basecamp will fail with "Failed to cast plugin to IComponent".
 
 ```cpp
 #ifndef CALC_UI_CPP_PLUGIN_H
@@ -183,15 +212,14 @@ Replace the scaffolded plugin header. This header is the same for both Option A 
 #include <QObject>
 #include <QWidget>
 #include <QVariantList>
+#include <IComponent.h>
 #include "calc_ui_cpp_interface.h"
 
-class LogosAPI;
-
-class CalcUiCppPlugin : public QObject, public CalcUiCppInterface
+class CalcUiCppPlugin : public QObject, public CalcUiCppInterface, public IComponent
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID CalcUiCppInterface_iid FILE "metadata.json")
-    Q_INTERFACES(CalcUiCppInterface PluginInterface)
+    Q_PLUGIN_METADATA(IID IComponent_iid FILE "metadata.json")
+    Q_INTERFACES(CalcUiCppInterface PluginInterface IComponent)
 
 public:
     explicit CalcUiCppPlugin(QObject* parent = nullptr);
@@ -389,6 +417,8 @@ logos_module(
         src/calc_ui_cpp_plugin.cpp
         src/calc_backend.h
         src/calc_backend.cpp
+    INCLUDE_DIRS
+        ${CMAKE_CURRENT_SOURCE_DIR}/interfaces
 )
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Quick QuickWidgets)
@@ -593,7 +623,7 @@ Since `metadata.json` declares `"type": "ui"`, `mkLogosModule` automatically wir
   description = "Calculator C++ UI plugin for Logos - widget frontend for calc_module";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
     calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
   };
 
@@ -616,6 +646,8 @@ Because `metadata.json` declares `"type": "ui"`, `mkLogosModule` automatically w
 
 ```bash
 git add -A
+nix flake update
+git add flake.lock
 nix build --override-input calc_module path:../logos-calc-module
 ```
 
@@ -636,29 +668,22 @@ You should see `createWidget` and `destroyWidget` in the methods list.
 ### 10.2 UI only (layout preview)
 
 ```bash
-nix run . --override-input calc_module path:../logos-calc-module
+nix run .
 ```
 
-The widget opens. No backend connected yet, so button clicks will silently return 0 (CalcBackend logs a warning when `calc_module` is not connected).
-
-> **When do you need `--override-input`?** `calc_module.url` in `flake.nix` points to the published GitHub URL. If your local `logos-calc-module` has unpushed changes or differs from what is on GitHub, you must use `--override-input calc_module path:../logos-calc-module` so nix uses your local copy. If your `calc_module` is already pushed and matches the GitHub URL, you can run `nix build` / `nix run` without the override. This is the same mechanism `ws build --local` / `ws build --auto-local` uses throughout the workspace.
+The widget opens. No backend module is loaded, so button clicks will silently return 0 (CalcBackend logs a warning when `calc_module` is not connected) — but you can verify the layout looks correct.
 
 ### 10.3 Full functionality (with modules)
 
-The `capability_module` is loaded automatically by the standalone app. You only need to install `calc_module`:
+The standalone app automatically bundles and loads all module dependencies declared in `metadata.json`. To test with your local `calc_module` from Part 1:
 
 ```bash
-nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
-mkdir -p modules
-
-# Bundle and install calc_module (from Part 1)
-cd ../logos-calc-module
-nix build '.#lgx'
-cd ../logos-calc-ui-cpp
-./pm/bin/lgpm --modules-dir ./modules install --file ../logos-calc-module/result/*.lgx
-
-nix run . --override-input calc_module path:../logos-calc-module -- --modules-dir ./modules
+nix run . --override-input calc_module path:../logos-calc-module
 ```
+
+Clicking **Add**, **Multiply**, **Factorial**, or **Fibonacci** now calls the real module.
+
+> **When do you need `--override-input`?** `calc_module.url` in `flake.nix` points to the published GitHub URL. If your local `logos-calc-module` has unpushed changes or differs from what is on GitHub, you must use `--override-input calc_module path:../logos-calc-module` so nix uses your local copy. If your `calc_module` is already pushed and matches the GitHub URL, you can run `nix build` / `nix run` without the override. This is the same mechanism `ws build --local` / `ws build --auto-local` uses throughout the workspace.
 
 ---
 
@@ -666,16 +691,18 @@ nix run . --override-input calc_module path:../logos-calc-module -- --modules-di
 
 ### 11.1 Create LGX packages
 
+Use `--out-link` to avoid overwriting the `result` symlink:
+
 ```bash
 # Package calc_module (from Part 1)
 cd ../logos-calc-module
-nix build '.#lgx'
-nix build '.#lgx-portable'
+nix build '.#lgx' --out-link result-lgx
+nix build '.#lgx-portable' --out-link result-lgx-portable
 
 # Package the C++ UI plugin
 cd ../logos-calc-ui-cpp
-nix build '.#lgx'
-nix build '.#lgx-portable'
+nix build '.#lgx' --out-link result-lgx
+nix build '.#lgx-portable' --out-link result-lgx-portable
 ```
 
 > For more bundling options (standalone bundler syntax, cross-platform packaging), see the [Developer Guide — Bundling with nix-bundle-lgx](logos-developer-guide.md#32-bundling-with-nix-bundle-lgx).
@@ -688,7 +715,7 @@ Build logos-basecamp, launch it once to preinstall its bundled modules, then ins
 
 ```bash
 # Build logos-basecamp
-nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe' -o basecamp-result
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1' -o basecamp-result
 
 # Launch once to preinstall bundled modules, then close it
 ./basecamp-result/bin/logos-basecamp
@@ -706,33 +733,80 @@ ls ~/.local/share/Logos/
 
 The dev build directory is named `LogosBasecampDev` (portable builds use `LogosBasecamp`).
 
-Install your modules using `lgpm` (substitute `BASECAMP_DIR` with the actual path you found above):
+Install your modules using `lgpm`. First, set `BASECAMP_DIR` to your platform's path:
+
+```bash
+# macOS:
+BASECAMP_DIR="$HOME/Library/Application Support/Logos/LogosBasecampDev"
+
+# Linux:
+BASECAMP_DIR="$HOME/.local/share/Logos/LogosBasecampDev"
+```
 
 ```bash
 # Build lgpm CLI
 nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
 
 # Install core module
-./pm/bin/lgpm --modules-dir BASECAMP_DIR/modules \
-  install --file ../logos-calc-module/result/*.lgx
+./pm/bin/lgpm --modules-dir "$BASECAMP_DIR/modules" \
+  install --file ../logos-calc-module/result-lgx/*.lgx
 
 # Install UI plugin
-./pm/bin/lgpm --modules-dir BASECAMP_DIR/plugins \
-  install --file result/*.lgx
+./pm/bin/lgpm --ui-plugins-dir "$BASECAMP_DIR/plugins" \
+  install --file result-lgx/*.lgx
 
 # Launch basecamp -- your modules appear alongside the built-in ones
 ./basecamp-result/bin/logos-basecamp
 ```
 
-### 11.3 Install via logos-basecamp UI
+### 11.3 Portable basecamp build (optional)
+
+The dev build above depends on nix store paths at runtime. For a self-contained portable build that works without nix:
+
+```bash
+# Build portable basecamp (bundles all Qt frameworks/libraries)
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1#bin-bundle-dir' -o basecamp-portable
+
+# Launch once to preinstall bundled modules
+./basecamp-portable/bin/logos-basecamp
+```
+
+The portable build uses a different data directory (`LogosBasecamp` instead of `LogosBasecampDev`). Set `BASECAMP_DIR` to your platform's path:
+
+```bash
+# macOS:
+BASECAMP_DIR="$HOME/Library/Application Support/Logos/LogosBasecamp"
+
+# Linux:
+BASECAMP_DIR="$HOME/.local/share/Logos/LogosBasecamp"
+```
+
+Install your modules using the **portable** `.lgx` variants:
+
+```bash
+# Install core module (use portable variant)
+./pm/bin/lgpm --modules-dir "$BASECAMP_DIR/modules" \
+  install --file ../logos-calc-module/result-lgx-portable/*.lgx
+
+# Install UI plugin (use portable variant)
+./pm/bin/lgpm --ui-plugins-dir "$BASECAMP_DIR/plugins" \
+  install --file result-lgx-portable/*.lgx
+
+# Launch
+./basecamp-portable/bin/logos-basecamp
+```
+
+> **Important:** Portable basecamp requires portable `.lgx` variants (`result-lgx-portable`), and the dev build requires dev variants (`result-lgx`). Mixing them will cause loading failures.
+
+### 11.4 Install via logos-basecamp UI
 
 Instead of using `lgpm` on the command line, you can install modules through the basecamp UI:
 
 1. Launch `logos-basecamp`
 2. Go to **Package Manager**
 3. Click **Install from file**
-4. Select `../logos-calc-module/result/*.lgx` — installs `calc_module`
-5. Repeat for `result/*.lgx` — installs `calc_ui_cpp`
+4. Select `../logos-calc-module/result-lgx/*.lgx` — installs `calc_module`
+5. Repeat for `result-lgx/*.lgx` — installs `calc_ui_cpp`
 
 The "Calculator" tab appears in the sidebar.
 
@@ -753,11 +827,12 @@ QML_DISABLE_DISK_CACHE=1 ./basecamp-result/bin/logos-basecamp
 When switching between portable and dev builds of basecamp, or running multiple basecamp instances, the data directory can get into a bad state (stale modules, mixed variants, corrupted preinstall). Clear it and let basecamp re-preinstall on next launch:
 
 ```bash
-# Remove basecamp's data directory (find yours under Application Support or .local/share)
-# macOS (typical):
+# Remove basecamp's data directory
+# macOS:
 rm -rf ~/Library/Application\ Support/Logos/LogosBasecampDev
-# Linux (typical):
-# rm -rf ~/.local/share/Logos/LogosBasecampDev
+
+# Linux:
+rm -rf ~/.local/share/Logos/LogosBasecampDev
 
 # Relaunch — basecamp will re-preinstall its bundled modules
 ./basecamp-result/bin/logos-basecamp

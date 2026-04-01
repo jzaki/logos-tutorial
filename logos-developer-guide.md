@@ -93,7 +93,8 @@ The **Logos platform** is a modular application framework built in C++ on top of
 | **logos-liblogos** | [logos-co/logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core library (`logos_host`, `liblogos_core`) |
 | **logos-logoscore-cli** | [logos-co/logos-logoscore-cli](https://github.com/logos-co/logos-logoscore-cli) | Headless CLI runtime (`logoscore`) |
 | **logos-package** | [logos-co/logos-package](https://github.com/logos-co/logos-package) | LGX package format library + `lgx` CLI |
-| **logos-package-manager-module** | [logos-co/logos-package-manager-module](https://github.com/logos-co/logos-package-manager-module) | Package manager module + `lgpm` CLI |
+| **logos-package-manager** | [logos-co/logos-package-manager](https://github.com/logos-co/logos-package-manager) | Local package manager library + `lgpm` CLI |
+| **logos-package-downloader** | [logos-co/logos-package-downloader](https://github.com/logos-co/logos-package-downloader) | Online catalog browser + `lgpd` CLI |
 | **logos-standalone-app** | [logos-co/logos-standalone-app](https://github.com/logos-co/logos-standalone-app) | Minimal shell for running/testing UI modules in isolation |
 | **logos-basecamp** | [logos-co/logos-basecamp](https://github.com/logos-co/logos-basecamp) | Desktop application shell |
 
@@ -131,17 +132,19 @@ The fastest way to create a new module is using the **logos-module-builder** tem
 mkdir logos-my-module && cd logos-my-module
 
 # Scaffold a minimal core module (no external dependencies)
-nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b
+nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95
 
 # Or scaffold a module that wraps an external C/C++ library
-nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#with-external-lib
+nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95#with-external-lib
 
 # For UI modules (C++ Qt widget with logos-standalone-app runner)
-nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-module
+nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95#ui-module
 
 # For QML UI modules (with logos-standalone-app runner)
-nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#ui-qml-module
+nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95#ui-qml-module
 ```
+
+> **Note:** The generated `flake.nix` uses an unpinned `logos-module-builder` URL. For reproducible builds, pin it to a specific commit — see the `flake.nix` examples in [Section 3.2](#32-building-lgx-packages) and the [tutorials](tutorial-wrapping-c-library.md#23-flakenix--nix-build-config).
 
 **Available templates:**
 
@@ -421,7 +424,7 @@ This works because `logos-module-builder` includes `nix-bundle-lgx` as its own d
 ```nix
 {
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -668,18 +671,18 @@ logos-basecamp produces two binary variants:
 
 ```bash
 # Build the development version
-nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#app' --out-link ./logos-basecamp
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1#app' --out-link ./logos-basecamp
 
 # Run the dev binary
 ./logos-basecamp/bin/logos-basecamp
 
 # Build the portable/distributed version
-nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#portable' --out-link ./logos-basecamp-portable
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1#portable' --out-link ./logos-basecamp-portable
 
 # Or build platform-specific distributions:
-nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#bin-bundle-dir'     # Flat directory bundle
-nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#bin-appimage'       # Linux AppImage
-nix build 'github:logos-co/logos-basecamp/70169584a44d954f638e34842bcfebf741e6bcfe#bin-macos-app'      # macOS .app bundle
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1#bin-bundle-dir'     # Flat directory bundle
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1#bin-appimage'       # Linux AppImage
+nix build 'github:logos-co/logos-basecamp/4958efebce73eaa8776fdfa314d4c84fce656db1#bin-macos-app'      # macOS .app bundle
 ```
 
 > **Note:** When installing modules into logos-basecamp, the LGX variant type must match the build type. Dev builds of basecamp expect **dev** LGX variants (e.g., `darwin-arm64-dev`), while portable builds expect **portable** variants (e.g., `darwin-arm64`). Use the `dual` bundler (see [3.2](#32-bundling-with-nix-bundle-lgx)) to produce packages that work with both.
@@ -923,7 +926,8 @@ When your module is installed via `lgpm`, its dependencies are automatically res
 | [logos-liblogos](https://github.com/logos-co/logos-liblogos) | Core library | `logos_host`, `liblogos_core` |
 | [logos-logoscore-cli](https://github.com/logos-co/logos-logoscore-cli) | Headless CLI runtime | `logoscore` (CLI) |
 | [logos-package](https://github.com/logos-co/logos-package) | Package format | `lgx` (CLI), `liblgx` (library) |
-| [logos-package-manager-module](https://github.com/logos-co/logos-package-manager-module) | Package management | `lgpm` (CLI), `package_manager_plugin` |
+| [logos-package-manager](https://github.com/logos-co/logos-package-manager) | Local package management | `lgpm` (CLI) |
+| [logos-package-downloader](https://github.com/logos-co/logos-package-downloader) | Online catalog + downloads | `lgpd` (CLI) |
 | [logos-standalone-app](https://github.com/logos-co/logos-standalone-app) | Minimal UI module runner | `logos-standalone-app` (loads a single UI plugin for testing) |
 | [logos-basecamp](https://github.com/logos-co/logos-basecamp) | Desktop app shell | `LogosApp` (GUI), MDI workspace, plugin loader |
 
@@ -953,15 +957,24 @@ logoscore stop                                # Stop daemon
 logoscore -m <dir> -l <name> -c "<module>.<method>(args)" [--quit-on-finish]
 ```
 
-### `lgpm` -- Package Manager
+### `lgpm` -- Local Package Manager
 
 ```bash
-./package-manager/bin/lgpm search <query>                          # Search packages
-./package-manager/bin/lgpm list [--category <cat>] [--installed]   # List packages
-./package-manager/bin/lgpm install <pkg> [pkgs...]                 # Install with dependency resolution
-./package-manager/bin/lgpm install --file <path.lgx>               # Install local file
-./package-manager/bin/lgpm info <pkg>                              # Package details
-./package-manager/bin/lgpm categories                              # List categories
+./package-manager/bin/lgpm --modules-dir <path> install --file <path.lgx>   # Install from local .lgx file
+./package-manager/bin/lgpm --modules-dir <path> install --dir <dir>         # Install all .lgx files in a directory
+./package-manager/bin/lgpm --modules-dir <path> list                        # List installed packages
+./package-manager/bin/lgpm --modules-dir <path> info <pkg>                  # Show installed package details
+```
+
+### `lgpd` -- Package Downloader
+
+```bash
+./downloader/bin/lgpd search <query>                       # Search packages by name/description
+./downloader/bin/lgpd list [--category <cat>]              # List available packages
+./downloader/bin/lgpd categories                           # List available categories
+./downloader/bin/lgpd info <pkg>                           # Show package details from catalog
+./downloader/bin/lgpd download <pkg> [-o <dir>]            # Download .lgx package
+./downloader/bin/lgpd --release <tag> download <pkg>       # Download from specific release
 ```
 
 ### `logos-cpp-generator` -- SDK Code Generator
@@ -1059,7 +1072,7 @@ When running a UI module with `nix run`, the standalone app automatically bundle
 3. **Each dependency must have a matching flake input** — the flake input name must exactly match the dependency name in `metadata.json`:
    ```nix
    inputs = {
-     logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+     logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
      calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
      storage_module.url = "github:logos-co/logos-storage-module";
    };
@@ -1079,7 +1092,7 @@ When running a UI module with `nix run`, the standalone app automatically bundle
 {
   description = "My UI module";
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
     calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
   };
   outputs = inputs@{ logos-module-builder, ... }:
@@ -1096,7 +1109,7 @@ When running a UI module with `nix run`, the standalone app automatically bundle
 {
   description = "My QML UI module";
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
     calc_module.url = "github:logos-co/logos-tutorial/tutorial-v1?dir=logos-calc-module";
   };
   outputs = inputs@{ logos-module-builder, ... }:
@@ -1115,9 +1128,9 @@ If the module doesn't appear, check:
 
 ### Capability module not found
 
-logos-basecamp requires the `capability` module to be installed. It is bundled as a preinstall `.lgx` package and installed on first launch. If you see errors about it:
+logos-basecamp requires the `capability` module to be installed. It is bundled with basecamp and installed on first launch. If you see errors about it:
 
-1. Check that the preinstall directory exists: `ls ./logos-basecamp/preinstall/`
+1. Check that the `modules/` and `plugins/` directories exist next to `bin/` and `lib/` in the basecamp build output
 2. Check that the capability module was extracted to the modules directory
 3. Verify the LGX variant type matches your basecamp build (dev variant for dev build, portable for portable build)
 

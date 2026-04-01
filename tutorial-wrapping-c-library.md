@@ -37,11 +37,13 @@ Before writing any C code, scaffold the Logos module project using the official 
 ```bash
 # For a module that wraps an external C library:
 mkdir logos-calc-module && cd logos-calc-module
-nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b#with-external-lib
+nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95#with-external-lib
 
 # Or for a plain module (no external library):
-# nix flake init -t github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b
+# nix flake init -t github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95
 ```
+
+> **Note:** The generated `flake.nix` uses an unpinned `logos-module-builder` URL. Replace it with the pinned version shown in [Step 2.3](#23-flakenix--nix-build-config) to ensure reproducible builds.
 
 This generates the skeleton files (`flake.nix`, `metadata.json`, `CMakeLists.txt`, etc.) pre-configured for the logos-module-builder. You then customize them for your specific library.
 
@@ -300,7 +302,7 @@ The `if/elseif/else` block above it is boilerplate — don't change it.
   description = "Calculator module - wraps libcalc C library for Logos";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -520,6 +522,8 @@ Then initialise the repo:
 cd logos-calc-module
 git init
 git add -A
+nix flake update
+git add flake.lock
 ```
 
 ### 3.2 Build with Nix
@@ -759,11 +763,11 @@ nix build '.#lgx-portable'
 
 Portable LGX packages are fully self-contained with no `/nix/store` references at runtime. These are the packages used by the Logos App Package Manager UI and published to [logos-modules](https://github.com/logos-co/logos-modules) releases.
 
-To create both dev and portable variants (the dev variant works with local `nix build` of basecamp; the portable variant works with standalone basecamp builds):
+To create both dev and portable variants (the dev variant works with local `nix build` of basecamp; the portable variant works with standalone basecamp builds), use `--out-link` to avoid overwriting the `result` symlink:
 
 ```bash
-nix build '.#lgx'
-nix build '.#lgx-portable'
+nix build '.#lgx' --out-link result-lgx
+nix build '.#lgx-portable' --out-link result-lgx-portable
 ```
 
 > For more bundling options (standalone bundler syntax, cross-platform packaging), see the [Developer Guide — Bundling with nix-bundle-lgx](logos-developer-guide.md#32-bundling-with-nix-bundle-lgx).
@@ -772,7 +776,7 @@ To install a portable package on another machine:
 
 ```bash
 nix build 'github:logos-co/logos-package-manager/e5c25989861f4487c3dc8c7b3bc0062bcbc3221f#cli' --out-link ./pm
-./pm/bin/lgpm --modules-dir ./modules install --file calc_module.lgx
+./pm/bin/lgpm --modules-dir ./modules install --file result-lgx-portable/*.lgx
 ```
 
 > **Note:** Local builds of `logoscore` / `logos-basecamp` (via `nix build`) expect **local** `.lgx` packages. Portable builds (via `nix build '.#bin-bundle-dir'`, `.#bin-appimage`, or `.#bin-macos-app`) expect **portable** `.lgx` packages. See the [logos-basecamp README](https://github.com/logos-co/logos-basecamp/blob/master/README.md) for details.
@@ -886,7 +890,7 @@ Instead of pre-building the library and placing it in `lib/`, you can have Nix f
   description = "Module wrapping libfoo from GitHub";
 
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder/b6cf87d30e2995e023496fcfc7f06e8127c6ac5b";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/46a51e5fc321ac11b966c1cc2a2cff21d36fef95";
 
     # Fetch the library source (non-flake)
     libfoo-src = {
