@@ -26,4 +26,4 @@ Working module source code used by the tutorials:
 |-----------|--------|------|----------|
 | `logos-calc-module/` | `calc_module` | Core (wraps libcalc) | Part 1 |
 | `logos-calc-ui/` | `calc_ui` | QML UI | Part 2 |
-| `logos-calc-cpp-ui/` | `calc_ui_cpp` | C++ UI | Part 3 |
+| `logos-calc-ui-cpp/` | `calc_ui_cpp` | C++ UI | Part 3 |
