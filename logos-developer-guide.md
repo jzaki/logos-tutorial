@@ -667,8 +667,8 @@ For one-shot execution (load, call, exit), use the legacy inline flags:
 
 logos-basecamp produces two binary variants:
 
-- **`logos-basecamp`** -- development build (shell wrapper that sets Qt environment variables, depends on `/nix/store`)
-- **`LogosBasecamp`** -- portable binary (self-contained, used in distributed builds and `.app` bundles)
+- **development** (depends on `/nix/store`)
+- **portable** (self-contained, used in distributed builds and `.app` bundles)
 
 ```bash
 # Build the development version
@@ -998,6 +998,7 @@ logoscore -m <dir> -l <name> -c "<module>.<method>(args)" [--quit-on-finish]
 ./downloader/bin/lgpd search <query>                       # Search packages by name/description
 ./downloader/bin/lgpd list [--category <cat>]              # List available packages
 ./downloader/bin/lgpd categories                           # List available categories
+./downloader/bin/lgpd releases                             # List recent GitHub releases (up to 30)
 ./downloader/bin/lgpd info <pkg>                           # Show package details from catalog
 ./downloader/bin/lgpd download <pkg> [-o <dir>]            # Download .lgx package
 ./downloader/bin/lgpd --release <tag> download <pkg>       # Download from specific release
