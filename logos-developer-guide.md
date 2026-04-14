@@ -16,28 +16,32 @@ A comprehensive guide to creating, building, testing, packaging, and distributin
 - [Part 2: Inspecting Your Module](#part-2-inspecting-your-module)
   - [2.1 The lm CLI Tool](#21-the-lm-cli-tool)
   - [2.2 The logos-module-viewer](#22-the-logos-module-viewer)
-- [Part 3: Packaging Your Module](#part-3-packaging-your-module)
-  - [3.1 The LGX Package Format](#31-the-lgx-package-format)
-  - [3.2 Building LGX Packages](#32-building-lgx-packages)
+- [Part 3: Testing UI Modules](#part-3-testing-ui-modules)
+  - [3.1 How It Works](#31-how-it-works)
+  - [3.2 Writing Tests](#32-writing-tests)
+  - [3.3 Running Tests](#33-running-tests)
+- [Part 4: Packaging Your Module](#part-4-packaging-your-module)
+  - [4.1 The LGX Package Format](#41-the-lgx-package-format)
+  - [4.2 Building LGX Packages](#42-building-lgx-packages)
     - [Built-in Nix Derivation (Preferred)](#built-in-nix-derivation-preferred)
     - [Using nix bundle (Alternative)](#using-nix-bundle-alternative)
-- [Part 4: Installing and Managing Modules](#part-4-installing-and-managing-modules)
-  - [4.1 The lgpm CLI](#41-the-lgpm-cli)
-  - [4.2 Installing from Local Files](#42-installing-from-local-files)
-  - [4.3 Installing from a Registry](#43-installing-from-a-registry)
-- [Part 5: Running Your Module](#part-5-running-your-module)
-  - [5.1 Running with logoscore](#51-running-with-logoscore)
-- [Part 6: Running in logos-basecamp](#part-6-running-in-logos-basecamp)
-  - [6.1 Building logos-basecamp](#61-building-logos-basecamp)
-  - [6.2 Module Types in logos-basecamp](#62-module-types-in-logos-basecamp)
-- [Part 7: Inter-Module Communication](#part-7-inter-module-communication)
-  - [7.1 The LogosAPI](#71-the-logosapi)
-  - [7.2 The C++ SDK Code Generator](#72-the-c-sdk-code-generator)
-  - [7.3 LogosResult](#73-logosresult)
-  - [7.4 Communication Modes](#74-communication-modes)
-- [Part 8: Advanced Topics](#part-8-advanced-topics)
-  - [8.1 Tutorials](#81-tutorials)
-  - [8.2 Module Dependencies](#82-module-dependencies)
+- [Part 5: Installing and Managing Modules](#part-5-installing-and-managing-modules)
+  - [5.1 The lgpm CLI](#51-the-lgpm-cli)
+  - [5.2 Installing from Local Files](#52-installing-from-local-files)
+  - [5.3 Installing from a Registry](#53-installing-from-a-registry)
+- [Part 6: Running Your Module](#part-6-running-your-module)
+  - [6.1 Running with logoscore](#61-running-with-logoscore)
+- [Part 7: Running in logos-basecamp](#part-7-running-in-logos-basecamp)
+  - [7.1 Building logos-basecamp](#71-building-logos-basecamp)
+  - [7.2 Module Types in logos-basecamp](#72-module-types-in-logos-basecamp)
+- [Part 8: Inter-Module Communication](#part-8-inter-module-communication)
+  - [8.1 The LogosAPI](#81-the-logosapi)
+  - [8.2 The C++ SDK Code Generator](#82-the-c-sdk-code-generator)
+  - [8.3 LogosResult](#83-logosresult)
+  - [8.4 Communication Modes](#84-communication-modes)
+- [Part 9: Advanced Topics](#part-9-advanced-topics)
+  - [9.1 Tutorials](#91-tutorials)
+  - [9.2 Module Dependencies](#92-module-dependencies)
 - [Reference: Repository Map](#reference-repository-map)
 - [Reference: CLI Tools Summary](#reference-cli-tools-summary)
 - [Troubleshooting](#troubleshooting)
@@ -377,11 +381,82 @@ This opens a window showing the module's metadata, methods, and allows interacti
 
 ---
 
-## Part 3: Packaging Your Module
+## Part 3: Testing UI Modules
+
+For `ui_qml` modules (both QML-only and C++ backend), `logos-module-builder` provides automatic integration testing using the [logos-qt-mcp](https://github.com/logos-co/logos-qt-mcp) QML inspector.
+
+### 3.1 How It Works
+
+The test infrastructure has three layers:
+
+1. **QML Inspector** — a TCP server compiled into `logos-standalone-app` that exposes the QML object tree
+2. **MCP Server** — a Node.js bridge that translates test commands into inspector calls
+3. **Test Framework** — a JavaScript API for writing UI assertions (`expectTexts`, `click`, `waitFor`, etc.)
+
+When you run `nix build .#integration-test`, the builder:
+- Launches `logos-standalone-app` with your plugin in headless mode (`QT_QPA_PLATFORM=offscreen`)
+- Connects to the QML inspector
+- Runs all `.mjs` test files in your `tests/` directory
+
+### 3.2 Writing Tests
+
+Create `.mjs` files in `tests/`. Each file imports the test framework and defines test cases:
+
+```javascript
+import { resolve } from "node:path";
+
+// CI sets LOGOS_QT_MCP automatically; for interactive use: nix build .#test-framework -o result-mcp
+const root = process.env.LOGOS_QT_MCP || new URL("../result-mcp", import.meta.url).pathname;
+const { test, run } = await import(resolve(root, "test-framework/framework.mjs"));
+
+test("my_module: loads UI", async (app) => {
+  await app.waitFor(
+    async () => { await app.expectTexts(["Hello"]); },
+    { timeout: 15000, interval: 500, description: "UI to load" }
+  );
+});
+
+test("my_module: click button", async (app) => {
+  await app.click("Submit");
+  await app.expectTexts(["Result:"]);
+});
+
+run();
+```
+
+Key test APIs:
+- `app.expectTexts(["text1", "text2"])` — assert text is visible in the UI
+- `app.click("Button Text")` — find an element by text and click it
+- `app.waitFor(fn, opts)` — retry an assertion until it passes or times out
+- `app.screenshot()` — capture the current UI state
+
+### 3.3 Running Tests
+
+```bash
+# Hermetic CI test (builds everything, no display needed)
+nix build .#integration-test -L
+
+# Interactive: build the test framework locally (one-time)
+nix build .#test-framework -o result-mcp
+
+# Start the app (inspector listens on localhost:3768)
+nix run .
+
+# Run tests against the running app (in another terminal)
+node tests/ui-tests.mjs
+```
+
+Multiple test files in `tests/` are discovered and run automatically. You can organize tests by concern (e.g., `tests/smoke.mjs`, `tests/interactions.mjs`).
+
+> **Note:** The integration test infrastructure requires `logos-standalone-app` with QML inspector support. This is provided automatically by `logos-module-builder` — no extra flake inputs needed.
+
+---
+
+## Part 4: Packaging Your Module
 
 Before you can run your module with `logoscore` or install it into `logos-basecamp`, you need to package the build output into an `.lgx` package and install it into a `modules/` directory.
 
-### 3.1 The LGX Package Format
+### 4.1 The LGX Package Format
 
 Logos modules are distributed as **`.lgx` packages**. An LGX file is a gzip-compressed tar archive with a specific internal structure:
 
@@ -401,7 +476,7 @@ mymodule.lgx (tar.gz)
 
 The **manifest.json** is auto-generated from your module's `metadata.json` by the bundler. It maps each variant to its main entry point.
 
-### 3.2 Building LGX Packages
+### 4.2 Building LGX Packages
 
 There are two ways to create `.lgx` packages. The preferred approach uses the built-in Nix derivation that comes with `logos-module-builder`. Alternatively, you can use the `nix bundle` command directly.
 
@@ -475,9 +550,9 @@ This produces a `my_module-<version>.lgx` file in the current directory.
 
 ---
 
-## Part 4: Installing and Managing Modules
+## Part 5: Installing and Managing Modules
 
-### 4.1 The `lgpm` CLI
+### 5.1 The `lgpm` CLI
 
 The **`lgpm`** CLI (Logos Package Manager) installs, searches, and manages module packages. Installing a package extracts it into a `modules/` directory that `logoscore` and `logos-basecamp` can load from.
 
@@ -514,7 +589,7 @@ nix build 'github:logos-co/logos-package-manager#cli' --out-link ./package-manag
 | `--json` | Output in JSON format |
 | `-h, --help` | Show help |
 
-### 4.2 Installing from Local Files
+### 5.2 Installing from Local Files
 
 ```bash
 # Install a locally built .lgx package into a modules/ directory
@@ -531,7 +606,7 @@ modules/
     └── variant
 ```
 
-### 4.3 Downloading and Installing from a Registry
+### 5.3 Downloading and Installing from a Registry
 
 To download packages from the online catalog and then install them locally, use `lgpd` (logos-package-downloader) followed by `lgpm`:
 
@@ -559,11 +634,11 @@ nix build 'github:logos-co/logos-package-downloader#cli' --out-link ./downloader
 
 ---
 
-## Part 5: Running Your Module
+## Part 6: Running Your Module
 
 Once your module is packaged and installed into a `modules/` directory (see Parts 3 and 4), you can run it with `logoscore`.
 
-### 5.1 Running with `logoscore`
+### 6.1 Running with `logoscore`
 
 The **`logoscore`** CLI (from `logos-liblogos`) is a headless runtime that can load modules and invoke their methods from the command line.
 
@@ -661,9 +736,9 @@ For one-shot execution (load, call, exit), use the legacy inline flags:
 
 ---
 
-## Part 6: Running in logos-basecamp
+## Part 7: Running in logos-basecamp
 
-### 6.1 Building logos-basecamp
+### 7.1 Building logos-basecamp
 
 logos-basecamp produces two binary variants:
 
@@ -688,7 +763,7 @@ nix build 'github:logos-co/logos-basecamp#bin-macos-app'      # macOS .app bundl
 
 > **Note:** When installing modules into logos-basecamp, the LGX variant type must match the build type. Dev builds of basecamp expect **dev** LGX variants (e.g., `darwin-arm64-dev`), while portable builds expect **portable** variants (e.g., `darwin-arm64`). Use the `dual` bundler (see [3.2](#32-bundling-with-nix-bundle-lgx)) to produce packages that work with both.
 
-### 6.2 Module Types in logos-basecamp
+### 7.2 Module Types in logos-basecamp
 
 The application supports three types of modules:
 
@@ -754,9 +829,9 @@ These have `"type": "ui_qml"` with `"view"` but no `"main"` — pure QML, no C++
 
 ---
 
-## Part 7: Inter-Module Communication
+## Part 8: Inter-Module Communication
 
-### 7.1 The LogosAPI
+### 8.1 The LogosAPI
 
 Every module receives a `LogosAPI*` pointer when `initLogos()` is called. This is your gateway to communicating with other modules.
 
@@ -792,7 +867,7 @@ void MyModulePlugin::initLogos(LogosAPI* logosAPIInstance)
 
 > **Prefer async calls.** Synchronous `invokeRemoteMethod` blocks the caller's thread until the remote module responds. Use `invokeRemoteMethodAsync` to avoid blocking, especially in UI modules.
 
-### 7.2 The C++ SDK Code Generator
+### 8.2 The C++ SDK Code Generator
 
 The `logos-cpp-generator` tool (from `logos-cpp-sdk`) inspects a compiled module and generates typed C++ wrapper classes, so you get compile-time type safety instead of raw `invokeRemoteMethod` calls.
 
@@ -851,7 +926,7 @@ The generated `LogosModules` struct provides a member for each module, with meth
 
 > **Prefer async wrappers.** Use `doSomethingAsync(...)` instead of `doSomething(...)` to avoid blocking the caller's thread. Synchronous calls can cause hangs if the target module is slow to respond.
 
-### 7.3 LogosResult
+### 8.3 LogosResult
 
 Many module methods return `LogosResult` for structured success/error handling:
 
@@ -894,7 +969,7 @@ Q_INVOKABLE LogosResult MyModulePlugin::fetchData(const QString& id) {
 }
 ```
 
-### 7.4 Communication Modes
+### 8.4 Communication Modes
 
 The SDK supports two communication modes:
 
@@ -915,9 +990,9 @@ LogosModeConfig::setMode(LogosMode::Remote);
 
 ---
 
-## Part 8: Advanced Topics
+## Part 9: Advanced Topics
 
-### 8.1 Tutorials
+### 9.1 Tutorials
 
 For hands-on walkthroughs of module development patterns, see the dedicated tutorials:
 
@@ -925,7 +1000,7 @@ For hands-on walkthroughs of module development patterns, see the dedicated tuto
 - **[Building a QML UI App](tutorial-qml-ui-app.md)** — create `calc_ui`, a QML-only UI plugin that calls a core module via the `logos.callModule()` bridge.
 - **[Building a C++ UI Module](tutorial-cpp-ui-app.md)** — build `calc_ui_cpp`, a C++ + QML view module that combines a QML frontend with a C++ backend. The backend exposes `Q_INVOKABLE` methods using the generated typed SDK; the QML view calls them via `logos.callModuleAsync()`.
 
-### 8.2 Module Dependencies
+### 9.2 Module Dependencies
 
 Declare dependencies in your `metadata.json`:
 

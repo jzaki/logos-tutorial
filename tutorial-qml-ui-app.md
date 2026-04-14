@@ -484,6 +484,66 @@ qml Main.qml
 
 ---
 
+## Step 8: UI Integration Tests (Optional)
+
+You can add automated UI tests that verify your QML plugin renders correctly. The test infrastructure is built into `logos-module-builder` — just add `.mjs` test files to a `tests/` directory and you get `nix build .#integration-test` for free.
+
+Tests use the [logos-qt-mcp](https://github.com/logos-co/logos-qt-mcp) test framework, which connects to the QML inspector inside `logos-standalone-app` and can find elements, click buttons, verify text, and take screenshots.
+
+### 8.1 Create a test file
+
+Create `tests/ui-tests.mjs`:
+
+```javascript
+import { resolve } from "node:path";
+
+// CI sets LOGOS_QT_MCP automatically; for interactive use: nix build .#test-framework -o result-mcp
+const root = process.env.LOGOS_QT_MCP || new URL("../result-mcp", import.meta.url).pathname;
+const { test, run } = await import(resolve(root, "test-framework/framework.mjs"));
+
+test("calc_ui: loads and shows title", async (app) => {
+  await app.waitFor(
+    async () => { await app.expectTexts(["Calculator"]); },
+    { timeout: 15000, interval: 500, description: "calc_ui to load" }
+  );
+});
+
+test("calc_ui: add button visible", async (app) => {
+  await app.expectTexts(["Add"]);
+});
+
+test("calc_ui: click add and check result", async (app) => {
+  await app.click("Add");
+  // Verify the result appears (depends on your UI)
+  await app.waitFor(
+    async () => { await app.expectTexts(["Result:"]); },
+    { timeout: 5000, interval: 500, description: "result to appear" }
+  );
+});
+
+run();
+```
+
+### 8.2 Run the tests
+
+```bash
+git add tests/
+
+# Hermetic CI test (builds everything, runs headless)
+nix build .#integration-test -L
+
+# Interactive: build test framework, run against a running app
+nix build .#test-framework -o result-mcp
+nix run .          # start the app with inspector on :3768
+node tests/ui-tests.mjs  # in another terminal
+```
+
+The `integration-test` output launches `logos-standalone-app` with `QT_QPA_PLATFORM=offscreen` (no display needed), connects to the QML inspector, and runs all `.mjs` files in `tests/`.
+
+You can have multiple test files (e.g., `tests/smoke.mjs`, `tests/interactions.mjs`) — they are all discovered and run automatically.
+
+---
+
 ## Known Limitations
 
 ### QML-to-C++ type coercion
