@@ -131,6 +131,42 @@ This is the **single source of truth** for the remote interface. `repc` generate
 
 ---
 
+## Step 3.1: Update the interface header
+
+The scaffolded template may create an interface file like `src/ui_example_interface.h`. Rename it to match this tutorial and make sure the class/IID names are updated, or the plugin metadata wiring will break.
+
+```bash
+# If your scaffold created ui_example files, rename the interface header:
+mv src/ui_example_interface.h src/calc_ui_cpp_interface.h
+```
+
+Set `src/calc_ui_cpp_interface.h` to:
+
+```cpp
+#pragma once
+
+#include <QObject>
+#include <QString>
+#include "interface.h"
+
+class CalcUiCppInterface : public PluginInterface
+{
+public:
+    virtual ~CalcUiCppInterface() = default;
+};
+
+#define CalcUiCppInterface_iid "org.logos.CalcUiCppInterface"
+Q_DECLARE_INTERFACE(CalcUiCppInterface, CalcUiCppInterface_iid)
+```
+
+Your plugin header should then include `calc_ui_cpp_interface.h` and use:
+- `Q_PLUGIN_METADATA(IID CalcUiCppInterface_iid FILE "metadata.json")`
+- `Q_INTERFACES(CalcUiCppInterface)`
+
+If the interface filename or IID symbol doesn't match, you'll typically get build errors (missing header/symbol) or plugin-load failures at runtime.
+
+---
+
 ## Step 4: CMakeLists.txt
 
 ```cmake
