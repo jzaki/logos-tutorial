@@ -625,11 +625,29 @@ Edit `Main.qml`, close and re-run — changes appear immediately without `nix bu
 
 ### 7.6 Testing without any runtime
 
-You can open `Main.qml` in any QML viewer (e.g., `qml` from Qt) to test the layout. The `logos` bridge won't be available, so clicking buttons will show "Logos bridge not available" -- but you can verify the layout and styling work correctly.
+You can open `Main.qml` in any QML viewer (e.g., `qml` from Qt) to test the layout.
+
+#### Install
+
+You'll need to have QML and any included modules (`QtQuick` and submodules `Controls`, and `Layout`).
+
+Eg, to simply install on linux (apt package manager):
 
 ```bash
-# If you have Qt installed
+sudo apt install qml-qt6 qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts
+```
+
+#### Viewing the QML
+
+The `logos` bridge won't be available, so clicking buttons will show "Logos bridge not available" -- but you can verify the layout and styling work correctly.
+
+```bash
+# If you have Qt and included modules installed
+# macOS:
 qml Main.qml
+
+# Linux:
+qml6 Main.qml
 ```
 
 ---
