@@ -304,7 +304,7 @@ Item {
         root.errorText = ""
         root.result = "..."
         // logos.watch() wraps the pending reply in a JS Promise
-        logos.watch(backend[method].apply(backend, args)).then(
+        logos.watch(backend[method].apply(backend, args),
             function(value) { root.result = String(value) },
             function(error) { root.errorText = String(error) }
         )
@@ -370,7 +370,7 @@ Key patterns:
 
 - `logos.module("calc_ui_cpp")` — gets the typed replica (auto-synced properties)
 - `backend.status` — PROP from `.rep`, updates automatically
-- `logos.watch(backend.add(1, 2)).then(...)` — SLOT return value as JS Promise
+- `logos.watch(backend.add(1, 2), ...)` — SLOT return value as JS Promise
 - ``— required for`logos.watch()`
 
 ---
@@ -507,7 +507,7 @@ node tests/ui-tests.mjs       # in another terminal
 
 | Pattern          | .rep declaration                     | Backend C++                                 | QML usage                                                              |
 | ---------------- | ------------------------------------ | ------------------------------------------- | ---------------------------------------------------------------------- |
-| **Return value** | `SLOT(int add(int a, int b))`        | `int add(...) override { return ...; }`     | `logos.watch(backend.add(1,2)).then(cb)`                               |
+| **Return value** | `SLOT(int add(int a, int b))`        | `int add(...) override { return ...; }`     | `logos.watch(backend.add(1,2), cb)`                                    |
 | **Property**     | `PROP(QString status READWRITE)`     | `setStatus("Ready")` (inherited)            | `backend.status` (auto-syncs)                                          |
 | **Signal**       | `SIGNAL(errorOccurred(QString msg))` | `emit errorOccurred("fail")`                | `Connections { target: backend; function onErrorOccurred(msg) {...} }` |
 | **Model**        | (use Q_PROPERTY on backend)          | `Q_PROPERTY(QAbstractItemModel* items ...)` | `logos.model("calc_ui_cpp", "items")`                                  |

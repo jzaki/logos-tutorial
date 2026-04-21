@@ -815,7 +815,7 @@ readonly property var backend: logos.module("calc_ui_cpp")
 // Properties auto-sync:
 Text { text: backend.status }
 // Return values via Promise:
-logos.watch(backend.add(1, 2)).then(function(v) { ... })
+logos.watch(backend.add(1, 2), function(v) { ... })
 ```
 
 - Scaffold: `nix flake init -t github:logos-co/logos-module-builder#ui-qml-backend`
